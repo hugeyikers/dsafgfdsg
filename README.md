@@ -6,6 +6,6 @@ Projekt robiony w ramach przedmiotu "Projekt Zespołowy" na Uniwersytecie Warmi�
 - [Piotr Ostaszewski](https://github.com/PET3R12)
 - [Jakub Malinowski](https://github.com/Nexeros)
 - [Adrian Skamarski](https://github.com/hugeyikers)
-- [Radek Matusiak](https://github.com/gilo0)
+- [Radosław Matusiak](https://github.com/gilo0)
 - [Jakub Klimas](https://github.com/JunglersYikes)
 ### Stack Technologiczny:
