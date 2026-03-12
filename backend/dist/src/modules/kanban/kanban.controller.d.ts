@@ -9,66 +9,66 @@ export declare class KanbanController {
     findAll(): Promise<({
         items: {
             id: number;
-            order: number;
             createdAt: Date;
+            order: number;
             updatedAt: Date;
             content: string;
             columnId: number;
         }[];
     } & {
         id: number;
+        createdAt: Date;
         title: string;
         order: number;
         limit: number;
-        createdAt: Date;
         updatedAt: Date;
     })[]>;
     createColumn(createColumnDto: CreateColumnDto): Promise<{
         items: {
             id: number;
-            order: number;
             createdAt: Date;
+            order: number;
             updatedAt: Date;
             content: string;
             columnId: number;
         }[];
     } & {
         id: number;
+        createdAt: Date;
         title: string;
         order: number;
         limit: number;
-        createdAt: Date;
         updatedAt: Date;
     }>;
     updateColumn(id: number, updateColumnDto: UpdateColumnDto): Promise<{
         items: {
             id: number;
-            order: number;
             createdAt: Date;
+            order: number;
             updatedAt: Date;
             content: string;
             columnId: number;
         }[];
     } & {
         id: number;
+        createdAt: Date;
         title: string;
         order: number;
         limit: number;
-        createdAt: Date;
         updatedAt: Date;
     }>;
     removeColumn(id: number): Promise<{
         id: number;
+        createdAt: Date;
         title: string;
         order: number;
         limit: number;
-        createdAt: Date;
         updatedAt: Date;
     }>;
     createItem(createItemDto: CreateItemDto): Promise<{
         id: number;
-        order: number;
         createdAt: Date;
+        order: number;
         updatedAt: Date;
         content: string;
         columnId: number;
@@ -78,24 +78,24 @@ export declare class KanbanController {
         targetColumnId: number;
     }): Promise<{
         id: number;
-        order: number;
         createdAt: Date;
+        order: number;
         updatedAt: Date;
         content: string;
         columnId: number;
     }[]>;
     updateItem(id: number, updateItemDto: UpdateItemDto): Promise<{
         id: number;
-        order: number;
         createdAt: Date;
+        order: number;
         updatedAt: Date;
         content: string;
         columnId: number;
     }>;
     removeItem(id: number): Promise<{
         id: number;
-        order: number;
         createdAt: Date;
+        order: number;
         updatedAt: Date;
         content: string;
         columnId: number;
@@ -104,10 +104,10 @@ export declare class KanbanController {
         columnIds: number[];
     }): Promise<{
         id: number;
+        createdAt: Date;
         title: string;
         order: number;
         limit: number;
-        createdAt: Date;
         updatedAt: Date;
     }[]>;
 }

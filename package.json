@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "start \"Kanban Backend\" npm run start:dev --prefix backend && start \"Kanban Frontend\" npm run dev --prefix fronend",
-    "install:all": "npm install && npm install --prefix backend && npm install --prefix fronend"
+    "start": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue,green\" \"npm run start:dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

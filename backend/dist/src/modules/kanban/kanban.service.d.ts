@@ -11,100 +11,100 @@ export declare class KanbanService implements OnModuleInit {
     findAll(): Promise<({
         items: {
             id: number;
-            order: number;
             createdAt: Date;
+            order: number;
             updatedAt: Date;
             content: string;
             columnId: number;
         }[];
     } & {
         id: number;
+        createdAt: Date;
         title: string;
         order: number;
         limit: number;
-        createdAt: Date;
         updatedAt: Date;
     })[]>;
     createColumn(dto: CreateColumnDto): Promise<{
         items: {
             id: number;
-            order: number;
             createdAt: Date;
+            order: number;
             updatedAt: Date;
             content: string;
             columnId: number;
         }[];
     } & {
         id: number;
+        createdAt: Date;
         title: string;
         order: number;
         limit: number;
-        createdAt: Date;
         updatedAt: Date;
     }>;
     updateColumn(id: number, dto: UpdateColumnDto): Promise<{
         items: {
             id: number;
-            order: number;
             createdAt: Date;
+            order: number;
             updatedAt: Date;
             content: string;
             columnId: number;
         }[];
     } & {
         id: number;
+        createdAt: Date;
         title: string;
         order: number;
         limit: number;
-        createdAt: Date;
         updatedAt: Date;
     }>;
     removeColumn(id: number): Promise<{
         id: number;
+        createdAt: Date;
         title: string;
         order: number;
         limit: number;
-        createdAt: Date;
         updatedAt: Date;
     }>;
     createItem(dto: CreateItemDto): Promise<{
         id: number;
-        order: number;
         createdAt: Date;
+        order: number;
         updatedAt: Date;
         content: string;
         columnId: number;
     }>;
     updateItem(id: number, dto: UpdateItemDto): Promise<{
         id: number;
-        order: number;
         createdAt: Date;
+        order: number;
         updatedAt: Date;
         content: string;
         columnId: number;
     }>;
     moveBatch(itemIds: number[], targetColumnId: number): Promise<{
         id: number;
-        order: number;
         createdAt: Date;
+        order: number;
         updatedAt: Date;
         content: string;
         columnId: number;
     }[]>;
     removeItem(id: number): Promise<{
         id: number;
-        order: number;
         createdAt: Date;
+        order: number;
         updatedAt: Date;
         content: string;
         columnId: number;
     }>;
     reorderColumns(columnIds: number[]): Promise<{
         id: number;
+        createdAt: Date;
         title: string;
         order: number;
         limit: number;
-        createdAt: Date;
         updatedAt: Date;
     }[]>;
 }
