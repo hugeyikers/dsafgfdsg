@@ -1,6 +1,3 @@
-// api/client.ts helper - assuming it exists or creating a simple one if needed for the store.
-// But first, let's create the Store.
-
 import { create } from 'zustand';
 import client from '../api/client';
 
@@ -22,7 +19,7 @@ export interface KanbanColumn {
 interface KanbanState {
   columns: KanbanColumn[];
   isLoading: boolean;
-  selectedItems: number[]; // For multi-select
+  selectedItems: number[]; 
   
   fetchBoard: () => Promise<void>;
   addColumn: (title: string, limit?: number) => Promise<void>;
@@ -33,8 +30,9 @@ interface KanbanState {
   updateItem: (itemId: number, content: string) => Promise<void>;
   removeItem: (itemId: number) => Promise<void>;
   
-  moveItem: (itemId: number, targetColumnId: number) => Promise<void>; // Simplified move
-  moveBatch: (targetColumnId: number) => Promise<void>; // Move selected
+  moveItem: (itemId: number, targetColumnId: number) => Promise<void>; 
+  moveBatch: (targetColumnId: number) => Promise<void>; 
+  moveItemsBatch: (itemIds: number[], targetColumnId: number) => Promise<void>;
   
   toggleSelection: (itemId: number) => void;
   clearSelection: () => void;
@@ -105,9 +103,7 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
 
   reorderColumns: async (columnIds: number[]) => {
     try {
-       // Optimistic update
       const currentColumns = get().columns;
-      // Sort columns based on the new ID order
       const reorderedColumns = columnIds.map(id => currentColumns.find(c => c.id === id)!).filter(Boolean);
       set({ columns: reorderedColumns });
 
@@ -128,7 +124,6 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
   },
 
   moveItem: async (itemId, targetColumnId) => {
-      // Optimistic update could happen here, but for simplicity:
       try {
           await client.patch('/kanban/items/move-batch', { itemIds: [itemId], targetColumnId });
           get().fetchBoard();
@@ -144,6 +139,16 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
           await client.patch('/kanban/items/move-batch', { itemIds: selectedItems, targetColumnId });
           set({ selectedItems: [] });
           get().fetchBoard();
+      } catch (e) {
+          console.error(e);
+      }
+  },
+
+  moveItemsBatch: async (itemIds, targetColumnId) => {
+      if (itemIds.length === 0) return;
+      try {
+          await client.patch('/kanban/items/move-batch', { itemIds, targetColumnId });
+          await get().fetchBoard();
       } catch (e) {
           console.error(e);
       }
