@@ -24,7 +24,7 @@ let PrismaService = class PrismaService extends client_1.PrismaClient {
             port: Number(process.env.DB_PORT) || 3306,
             user: process.env.DB_USER || 'root',
             password: process.env.DB_PASSWORD || '',
-            database: process.env.DB_NAME || 'szap',
+            database: process.env.DB_NAME || 'kanban_db',
             connectionLimit: 10
         });
         super({ adapter });
