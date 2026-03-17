@@ -15,7 +15,6 @@ function App() {
         
         <Route element={isLogged ? <DashboardLayout user={user!} /> : <Navigate to="/login" />}>
           <Route path="/kanban" element={<KanbanBoard />} />
-          {/* Redirect root to kanban */}
           <Route path="/" element={<Navigate to="/kanban" />} />
         </Route>
         
