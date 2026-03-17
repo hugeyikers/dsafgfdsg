@@ -262,7 +262,7 @@ tr:hover { background-color: #f9f9f9; }
 .status-badge.critical { background: rgba(231, 76, 60, 0.15); color: var(--critical); }
 .status-badge.pending { background: rgba(52, 152, 219, 0.15); color: var(--accent-blue); }
 
-/* FORMULARZE [cite: 2211] */
+
 .form-group { margin-bottom: 15px; }
 .form-control {
     width: 100%;
@@ -283,7 +283,6 @@ tr:hover { background-color: #f9f9f9; }
 
 .btn-primary:hover { background-color: #2980b9; }
 
-/* 4. RESPONSYWNOŚĆ (Mobile-first) [cite: 2239] */
 @media (max-width: 768px) {
     .container { flex-direction: column; }
     .sidebar { width: 100%; height: auto; }
@@ -291,11 +290,20 @@ tr:hover { background-color: #f9f9f9; }
     .main-content { padding: 15px; }
 }
 
-/* FOOTER [cite: 2352] */
 .system-footer {
     text-align: center;
     padding: 20px;
     font-size: 11px;
     color: var(--text-muted);
     background: #f1f1f1;
+}
+
+.kanban-columns-container > div:first-child {
+    margin-left: 1.5rem !important; 
+}
+
+.kanban-columns-container::after {
+    content: '';
+    display: block;
+    min-width: 1.5rem;
 }

@@ -1,125 +1,139 @@
 import React, { useState } from 'react';
-import { Droppable, Draggable } from '@hello-pangea/dnd';
+import { Droppable } from '@hello-pangea/dnd';
 import { KanbanColumn, useKanbanStore } from '../../../store/useKanbanStore';
 import Task from './Task';
-import { MoreVertical, Plus, Trash, Trash2, Edit2, AlertTriangle, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Edit2, Check, X } from 'lucide-react';
 
 interface ColumnProps {
     column: KanbanColumn;
 }
 
 const Column: React.FC<ColumnProps> = ({ column }) => {
-    const { updateColumn, removeColumn, addItem, selectedItems, moveBatch } = useKanbanStore();
+    const { updateColumn, addItem } = useKanbanStore();
     const [newItemContent, setNewItemContent] = useState('');
-    const [isEditing, setIsEditing] = useState(false);
+    const [isAdding, setIsAdding] = useState(false);
+    
+    const [isEditingCol, setIsEditingCol] = useState(false);
     const [tempTitle, setTempTitle] = useState(column.title);
     const [tempLimit, setTempLimit] = useState(column.limit);
-
-    // Limit Logic
-    const isOverLimit = column.limit > 0 && column.items.length > column.limit;
-    
-    // Check if dragging logic allows adding items here (soft limit)
-    // The requirement says: "jak przekroczy to dalej pozwala dodać ale wywala alert i w gui na czerwono zmienia kolor sekcji"
 
     const handleAddItem = (e: React.FormEvent) => {
         e.preventDefault();
         if (!newItemContent.trim()) return;
-        
-        // Warn if adding this item will exceed or further exceed the limit
-        if (column.limit > 0 && column.items.length >= column.limit) {
-            if (!confirm("Limit przekroczony! Czy na pewno chcesz dodać zadanie?")) return;
-        }
-
         addItem(column.id, newItemContent);
         setNewItemContent('');
+        setIsAdding(false);
     };
 
-    const handleUpdateColumn = () => {
-        updateColumn(column.id, { title: tempTitle, limit: tempLimit });
-        setIsEditing(false);
+    const handleSaveColumn = () => {
+        if (tempTitle.trim()) {
+            updateColumn(column.id, { title: tempTitle, limit: tempLimit });
+        }
+        setIsEditingCol(false);
     };
 
-    const handleMoveSelectedHere = () => {
-        moveBatch(column.id);
-    }
+    const handleCancelEdit = () => {
+        setTempTitle(column.title);
+        setTempLimit(column.limit);
+        setIsEditingCol(false);
+    };
+
+    const isOverLimit = column.limit > 0 && column.items.length > column.limit;
+
+    const borderColorClass = isOverLimit ? 'border-red-500' : 'border-[#00ff44]';
+    const bgColorClass = isOverLimit ? 'bg-red-50' : 'bg-white';
 
     return (
-        <div className={`flex flex-col w-80 min-w-[20rem] rounded-lg shadow-md transition-colors duration-300 max-h-full
-            ${isOverLimit ? 'bg-red-50 border-2 border-red-300' : 'bg-gray-100 border border-gray-200'}
-        `}>
-            {/* Header */}
-            <div className={`p-3 border-b border-gray-200 flex justify-between items-start rounded-t-lg
-                ${isOverLimit ? 'bg-red-100' : 'bg-gray-200'}
-            `}>
-                {isEditing ? (
-                    <div className="flex flex-col gap-2 w-full">
-                        <input className="text-sm p-1 rounded border" value={tempTitle} onChange={e => setTempTitle(e.target.value)} placeholder="Name" />
-                        <div className="flex items-center gap-1">
-                            <span className="text-xs text-gray-600">Max:</span>
-                            <input className="text-sm p-1 rounded border w-16" type="number" value={tempLimit} onChange={e => setTempLimit(parseInt(e.target.value))} />
+        <div className="flex flex-col w-[300px] flex-shrink-0 relative">
+            
+            <div className={`flex flex-col border-[3px] ${borderColorClass} rounded-[30px] overflow-hidden relative transition-colors duration-300`}>
+                
+                <div className={`flex justify-center items-center p-3 border-b-[3px] ${borderColorClass} relative ${bgColorClass} min-h-[56px] transition-colors duration-300`}>
+                    {isEditingCol ? (
+                        <input 
+                            autoFocus
+                            className="font-medium text-lg text-black text-center outline-none border-b-2 border-gray-400 w-3/4 bg-transparent"
+                            value={tempTitle}
+                            onChange={(e) => setTempTitle(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSaveColumn()}
+                        />
+                    ) : (
+                        <h3 className={`font-medium text-lg transition-colors duration-300 ${isOverLimit ? 'text-red-700' : 'text-black'}`}>
+                            {column.title}
+                        </h3>
+                    )}
+                    
+                    {!isEditingCol && (
+                        <button 
+                            onClick={() => setIsAdding(!isAdding)}
+                            className={`absolute right-4 text-2xl font-light hover:scale-110 transition-transform ${isOverLimit ? 'text-red-700' : 'text-black'}`}
+                            title="Dodaj zadanie"
+                        >
+                            +
+                        </button>
+                    )}
+                </div>
+
+                <Droppable droppableId={`col-${column.id}`}>
+                    {(provided) => (
+                        <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className={`flex-1 p-4 overflow-y-auto min-h-[200px] flex flex-col gap-3 transition-colors duration-300 ${bgColorClass}`}
+                        >
+                            {isAdding && (
+                                <form onSubmit={handleAddItem} className="mb-2">
+                                    <input 
+                                        autoFocus
+                                        className="w-full p-2 border border-gray-400 rounded-full text-center text-sm outline-none bg-white"
+                                        placeholder="Nazwa zadania..."
+                                        value={newItemContent}
+                                        onChange={e => setNewItemContent(e.target.value)}
+                                        onBlur={() => {
+                                            if(!newItemContent.trim()) setIsAdding(false);
+                                        }}
+                                    />
+                                </form>
+                            )}
+
+                            {column.items.map((item, index) => (
+                                <Task key={item.id} item={item} index={index} />
+                            ))}
+                            {provided.placeholder}
                         </div>
-                        <div className="flex gap-2 justify-end mt-1">
-                            <button onClick={handleUpdateColumn} className="text-xs bg-green-500 text-white px-2 py-1 rounded">Save</button>
-                            <button onClick={() => setIsEditing(false)} className="text-xs bg-gray-400 text-white px-2 py-1 rounded">Cancel</button>
-                        </div>
-                    </div>
+                    )}
+                </Droppable>
+            </div>
+
+            <div className={`flex items-center gap-2 mt-1 ml-4 text-sm font-medium transition-colors duration-300 ${isOverLimit ? 'text-red-600' : 'text-black'}`}>
+                {isEditingCol ? (
+                    <>
+                        <span>Max:</span>
+                        <input 
+                            type="number"
+                            min="0"
+                            className="w-12 text-center border-b border-gray-400 outline-none bg-transparent text-black"
+                            value={tempLimit}
+                            onChange={(e) => setTempLimit(parseInt(e.target.value) || 0)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSaveColumn()}
+                        />
+                        <button onClick={handleSaveColumn} className="text-green-600 hover:scale-110 ml-1"><Check size={16} /></button>
+                        <button onClick={handleCancelEdit} className="text-red-500 hover:scale-110"><X size={16} /></button>
+                    </>
                 ) : (
-                    <div className="w-full">
-                        <div className="flex justify-between items-center">
-                            <h3 className="font-semibold text-gray-700 truncate" title={column.title}>{column.title}</h3>
-                            <button onClick={() => setIsEditing(true)} className="text-gray-400 hover:text-gray-600"><Edit2 size={14} /></button>
-                        </div>
-                        <div className="flex justify-between items-center mt-1">
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${isOverLimit ? 'bg-red-500 text-white font-bold' : 'bg-gray-300 text-gray-600'}`}>
-                                {column.items.length} / {column.limit === 0 ? '∞' : column.limit}
-                            </span>
-                            {isOverLimit && <AlertTriangle size={14} className="text-red-500" />}
-                            <button onClick={() => { if(confirm('Delete column?')) removeColumn(column.id) }} className="text-red-300 hover:text-red-500"><Trash size={14} /></button>
-                        </div>
-                    </div>
+                    <>
+                        <span>Max: {column.limit === 0 ? '∞' : column.limit}</span>
+                        <button 
+                            onClick={() => setIsEditingCol(true)}
+                            className={`${isOverLimit ? 'text-red-500 hover:text-red-700' : 'text-gray-600 hover:text-black'} transition-colors`}
+                            title="Edytuj kolumnę"
+                        >
+                            <Edit2 size={14} />
+                        </button>
+                    </>
                 )}
             </div>
             
-            {/* Move Batch Here Button (Only visible if items selected elsewhere) */}
-            {selectedItems.length > 0 && !selectedItems.every(id => column.items.some(i => i.id === id)) && (
-                <button 
-                    onClick={handleMoveSelectedHere}
-                    className="m-2 py-1 px-2 bg-blue-100 text-blue-600 text-xs rounded hover:bg-blue-200 flex items-center justify-center gap-1 dashed border border-blue-300"
-                >
-                    Move {selectedItems.length} selected here
-                </button>
-            )}
-
-            {/* Task List */}
-            <Droppable droppableId={`col-${column.id}`}>
-                {(provided, snapshot) => (
-                    <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={`flex-1 p-2 overflow-y-auto min-h-[100px] ${snapshot.isDraggingOver ? 'bg-gray-200' : ''}`}
-                    >
-                        {column.items.map((item, index) => (
-                            <Task key={item.id} item={item} index={index} />
-                        ))}
-                        {provided.placeholder}
-                    </div>
-                )}
-            </Droppable>
-
-            {/* Add Item Footer */}
-            <form onSubmit={handleAddItem} className="p-3 border-t border-gray-200 bg-white/50 rounded-b-lg">
-                <div className="flex gap-2">
-                    <input 
-                        className="flex-1 w-full text-sm p-2 border rounded focus:outline-none focus:border-indigo-500"
-                        placeholder="Add task..."
-                        value={newItemContent}
-                        onChange={e => setNewItemContent(e.target.value)}
-                    />
-                    <button type="submit" className="bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700">
-                        <Plus size={16} />
-                    </button>
-                </div>
-            </form>
         </div>
     );
 };

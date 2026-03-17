@@ -3,35 +3,35 @@ export declare class UsersService {
     private prisma;
     constructor(prisma: PrismaService);
     findAll(): Promise<{
+        password: string;
         id: number;
-        createdAt: Date;
         email: string;
         fullName: string;
         role: import(".prisma/client").$Enums.Role;
-        password: string;
+        createdAt: Date;
     }[]>;
     create(data: any): Promise<{
+        password: string;
         id: number;
-        createdAt: Date;
         email: string;
         fullName: string;
         role: import(".prisma/client").$Enums.Role;
-        password: string;
+        createdAt: Date;
     }>;
     update(id: number, data: any): Promise<{
+        password: string;
         id: number;
-        createdAt: Date;
         email: string;
         fullName: string;
         role: import(".prisma/client").$Enums.Role;
-        password: string;
+        createdAt: Date;
     }>;
     remove(id: number): Promise<{
+        password: string;
         id: number;
-        createdAt: Date;
         email: string;
         fullName: string;
         role: import(".prisma/client").$Enums.Role;
-        password: string;
+        createdAt: Date;
     }>;
 }
