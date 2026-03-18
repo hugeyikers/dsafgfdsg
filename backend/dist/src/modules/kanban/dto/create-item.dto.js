@@ -24,4 +24,11 @@ __decorate([
     (0, class_validator_1.IsInt)(),
     __metadata("design:type", Number)
 ], CreateItemDto.prototype, "columnId", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((object, value) => value !== null),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], CreateItemDto.prototype, "assignedToId", void 0);
 //# sourceMappingURL=create-item.dto.js.map

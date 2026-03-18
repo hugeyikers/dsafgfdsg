@@ -6,6 +6,12 @@ export interface KanbanItem {
   content: string;
   order: number;
   columnId: number;
+  assignedToId?: number;
+  assignedTo?: {
+      id: number;
+      fullName: string;
+      email: string;
+  };
 }
 
 export interface KanbanColumn {
@@ -26,13 +32,13 @@ interface KanbanState {
   updateColumn: (id: number, data: { title?: string, limit?: number }) => Promise<void>;
   removeColumn: (id: number) => Promise<void>;
   
-  addItem: (columnId: number, content: string) => Promise<void>;
-  updateItem: (itemId: number, content: string) => Promise<void>;
+  addItem: (columnId: number, content: string, assignedToId?: number) => Promise<void>;
+  updateItem: (itemId: number, content: string, assignedToId?: number) => Promise<void>;
   removeItem: (itemId: number) => Promise<void>;
   
-  moveItem: (itemId: number, targetColumnId: number) => Promise<void>; 
+  moveItem: (itemId: number, targetColumnId: number, targetAssignedToId?: number) => Promise<void>; 
   moveBatch: (targetColumnId: number) => Promise<void>; 
-  moveItemsBatch: (itemIds: number[], targetColumnId: number) => Promise<void>;
+  moveItemsBatch: (itemIds: number[], targetColumnId: number, targetAssignedToId?: number) => Promise<void>;
   
   toggleSelection: (itemId: number) => void;
   clearSelection: () => void;
@@ -83,18 +89,24 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     }
   },
 
-  addItem: async (columnId, content) => {
+  addItem: async (columnId, content, assignedToId) => {
     try {
-      await client.post('/kanban/items', { columnId, content });
+      await client.post('/kanban/items', { columnId, content, assignedToId });
       get().fetchBoard();
     } catch (e) {
       console.error(e);
     }
   },
 
-  updateItem: async (id, content) => {
+  updateItem: async (id, content, assignedToId) => {
       try {
-          await client.patch(`/kanban/items/${id}`, { content });
+          // assignedToId value of undefined means no change, but we want to allow null to unassign.
+          // We pass it in payload only if it's explicitly passed (including null)
+          const payload: any = { content };
+          if (assignedToId !== undefined) {
+             payload.assignedToId = assignedToId;
+          }
+          await client.patch(`/kanban/items/${id}`, payload);
           get().fetchBoard();
       } catch (e) {
           console.error(e);
@@ -123,9 +135,29 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     }
   },
 
-  moveItem: async (itemId, targetColumnId) => {
+  moveItem: async (itemId, targetColumnId, targetAssignedToId) => {
       try {
-          await client.patch('/kanban/items/move-batch', { itemIds: [itemId], targetColumnId });
+          const payload: any = { itemIds: [itemId], targetColumnId };
+          if (targetAssignedToId !== undefined) {
+              payload.targetAssignedToId = targetAssignedToId;
+          }
+          // Using move-batch logic or simple update? 
+          // Previous code used `move-batch` for single item moves too.
+          // Let's ensure backend `move-batch` handles assignedToId or use update implementation.
+          // The backend `moveBatch` implementation I read earlier likely DOES NOT handle assignedToId yet.
+          // I should verify backend.
+          // `kanban.service.ts` moveBatch: `data: { columnId: targetColumnId, order: nextOrder }` - NO assignedToId.
+          
+          // So I should use `updateItem` (singular) logic via `patch /items/:id` or update moveBatch.
+          // But I want a clean implementation.
+          // Let's use `updateItem` logic which maps to `updateItem` on backend.
+          // Backend `updateItem` uses `dto`. `UpdateItemDto` now has `assignedToId`.
+          
+          const patchPayload: any = { columnId: targetColumnId };
+          if (targetAssignedToId !== undefined) patchPayload.assignedToId = targetAssignedToId;
+          
+          await client.patch(`/kanban/items/${itemId}`, patchPayload);
+
           get().fetchBoard();
       } catch (e) {
           console.error(e);

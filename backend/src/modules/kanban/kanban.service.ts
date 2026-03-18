@@ -28,6 +28,7 @@ export class KanbanService implements OnModuleInit {
       include: {
         items: {
           orderBy: { order: 'asc' },
+          include: { assignedTo: true },
         },
       },
       orderBy: { order: 'asc' },
@@ -63,7 +64,13 @@ export class KanbanService implements OnModuleInit {
     const order = maxOrder ? maxOrder.order + 1 : 0;
 
     return this.prisma.kanbanItem.create({
-      data: { ...dto, order },
+      data: { 
+        content: dto.content,
+        columnId: dto.columnId,
+        assignedToId: dto.assignedToId || null,
+        order
+      },
+      include: { assignedTo: true },
     });
   }
 
@@ -72,7 +79,8 @@ export class KanbanService implements OnModuleInit {
       // sortowania wszystkich elementów, tutaj uproszczona aktualizacja
       return this.prisma.kanbanItem.update({
           where: { id },
-          data: dto
+          data: dto,
+          include: { assignedTo: true }
       });
   }
 

@@ -9,14 +9,24 @@ export declare class KanbanService implements OnModuleInit {
     constructor(prisma: PrismaService);
     onModuleInit(): Promise<void>;
     findAll(): Promise<({
-        items: {
+        items: ({
+            assignedTo: {
+                password: string;
+                id: number;
+                email: string;
+                fullName: string;
+                role: import(".prisma/client").$Enums.Role;
+                createdAt: Date;
+            };
+        } & {
             id: number;
             createdAt: Date;
             order: number;
             updatedAt: Date;
             content: string;
+            assignedToId: number | null;
             columnId: number;
-        }[];
+        })[];
     } & {
         id: number;
         createdAt: Date;
@@ -32,6 +42,7 @@ export declare class KanbanService implements OnModuleInit {
             order: number;
             updatedAt: Date;
             content: string;
+            assignedToId: number | null;
             columnId: number;
         }[];
     } & {
@@ -49,6 +60,7 @@ export declare class KanbanService implements OnModuleInit {
             order: number;
             updatedAt: Date;
             content: string;
+            assignedToId: number | null;
             columnId: number;
         }[];
     } & {
@@ -68,19 +80,39 @@ export declare class KanbanService implements OnModuleInit {
         updatedAt: Date;
     }>;
     createItem(dto: CreateItemDto): Promise<{
+        assignedTo: {
+            password: string;
+            id: number;
+            email: string;
+            fullName: string;
+            role: import(".prisma/client").$Enums.Role;
+            createdAt: Date;
+        };
+    } & {
         id: number;
         createdAt: Date;
         order: number;
         updatedAt: Date;
         content: string;
+        assignedToId: number | null;
         columnId: number;
     }>;
     updateItem(id: number, dto: UpdateItemDto): Promise<{
+        assignedTo: {
+            password: string;
+            id: number;
+            email: string;
+            fullName: string;
+            role: import(".prisma/client").$Enums.Role;
+            createdAt: Date;
+        };
+    } & {
         id: number;
         createdAt: Date;
         order: number;
         updatedAt: Date;
         content: string;
+        assignedToId: number | null;
         columnId: number;
     }>;
     moveBatch(itemIds: number[], targetColumnId: number): Promise<{
@@ -89,6 +121,7 @@ export declare class KanbanService implements OnModuleInit {
         order: number;
         updatedAt: Date;
         content: string;
+        assignedToId: number | null;
         columnId: number;
     }[]>;
     removeItem(id: number): Promise<{
@@ -97,6 +130,7 @@ export declare class KanbanService implements OnModuleInit {
         order: number;
         updatedAt: Date;
         content: string;
+        assignedToId: number | null;
         columnId: number;
     }>;
     reorderColumns(columnIds: number[]): Promise<{

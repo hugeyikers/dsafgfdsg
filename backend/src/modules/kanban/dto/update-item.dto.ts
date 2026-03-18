@@ -1,4 +1,4 @@
-import { IsInt, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 export class UpdateItemDto {
     @IsString()
@@ -14,5 +14,10 @@ export class UpdateItemDto {
     @IsInt()
     @IsOptional()
     order?: number;
+
+    @ValidateIf((object, value) => value !== null)
+    @IsInt()
+    @IsOptional()
+    assignedToId?: number | null;
   }
   

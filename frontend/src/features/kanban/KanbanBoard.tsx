@@ -1,272 +1,346 @@
 import React, { useEffect, useState } from 'react';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { DragDropContext, Droppable } from '@hello-pangea/dnd';
 import { useKanbanStore } from '../../store/useKanbanStore';
-import Column from './components/Column';
-import { Plus, Trash2, X } from 'lucide-react';
+import { useUserStore } from '../../store/useUserStore';
+import Task from './components/Task';
+import { Plus, Trash2, X, AlertCircle, Edit2, Check } from 'lucide-react';
 
 const KanbanBoard = () => {
-    const { columns, fetchBoard, addColumn, moveItem, moveItemsBatch, selectedItems, clearSelection, reorderColumns, removeItem, removeColumn } = useKanbanStore();
+    const { columns, fetchBoard, addColumn, moveItem, removeColumn, addItem, updateColumn } = useKanbanStore();
+    const { users, fetchUsers } = useUserStore();
+    const [isAddingColumn, setIsAddingColumn] = useState(false);
     const [newColTitle, setNewColTitle] = useState('');
-    const [isAdding, setIsAdding] = useState(false);
     
-    const [dragType, setDragType] = useState<string | null>(null);
-    const [colToDelete, setColToDelete] = useState<number | null>(null);
-    const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
-    const [targetColForTasks, setTargetColForTasks] = useState<string>('');
+    // Quick Add Task state (cell specific)
+    const [addingToCell, setAddingToCell] = useState<{colId: number, userId: number | null} | null>(null);
+    const [newTaskContent, setNewTaskContent] = useState('');
+
+    // Column Editing State
+    const [editingColId, setEditingColId] = useState<number | null>(null);
+    const [tempColTitle, setTempColTitle] = useState('');
+    const [tempColLimit, setTempColLimit] = useState(0);
 
     useEffect(() => {
         fetchBoard();
+        fetchUsers();
     }, []);
 
-    const handleDragStart = (start: any) => {
-        setDragType(start.type);
+    const startEditingColumn = (col: any) => {
+        setEditingColId(col.id);
+        setTempColTitle(col.title);
+        setTempColLimit(col.limit || 0);
+    };
+
+    const handleSaveColumn = async () => {
+        if (editingColId !== null && tempColTitle.trim()) {
+            await updateColumn(editingColId, { title: tempColTitle, limit: tempColLimit });
+            setEditingColId(null);
+        }
     };
 
     const handleDragEnd = (result: any) => {
-        setDragType(null);
-        const { destination, source, draggableId, type } = result;
+        const { destination, source, draggableId } = result;
+
         if (!destination) return;
         if (destination.droppableId === source.droppableId && destination.index === source.index) return;
-
-        if (destination.droppableId === 'trash-zone-col') {
-            const colId = parseInt(draggableId.split('-')[1]);
-            if (!isNaN(colId)) setColToDelete(colId);
-            return;
-        }
-
-        if (destination.droppableId === 'trash-zone-task') {
+        
+        // Droppable ID format: col-{colId}-user-{userId} OR col-{colId}-unassigned
+        if (destination.droppableId.startsWith('col-')) {
             const itemId = parseInt(draggableId.split('-')[1]);
-            if (!isNaN(itemId)) setTaskToDelete(itemId);
-            return;
-        }
-
-        if (type === 'COLUMN') {
-            const newColumnOrder = Array.from(columns);
-            const [removed] = newColumnOrder.splice(source.index, 1);
-            newColumnOrder.splice(destination.index, 0, removed);
-            const newOrderIds = newColumnOrder.map(c => c.id);
-            reorderColumns(newOrderIds);
-            return;
-        }
-
-        const itemId = parseInt(draggableId.split('-')[1]);
-        const targetColId = parseInt(destination.droppableId.split('-')[1]);
-        moveItem(itemId, targetColId);
-    };
-
-    const handleAddColumn = () => {
-        if (!newColTitle.trim()) return;
-        addColumn(newColTitle, 0); 
-        setNewColTitle('');
-        setIsAdding(false);
-    };
-
-    const handleConfirmDeleteColumn = async () => {
-        if (colToDelete !== null) {
-            const colIndex = columns.findIndex(c => c.id === colToDelete);
-            const deletingColObj = columns[colIndex];
+            const destParts = destination.droppableId.split('-');
+            const targetColId = parseInt(destParts[1]);
             
-            if (deletingColObj && deletingColObj.items.length > 0 && targetColForTasks !== '') {
-                const targetColId = parseInt(targetColForTasks);
-                if (!isNaN(targetColId)) {
-                    const itemIdsToMove = deletingColObj.items.map(item => item.id);
-                    await moveItemsBatch(itemIdsToMove, targetColId);
-                }
+            let targetUserId: number | undefined | null = undefined;
+            
+            if (destParts[2] === 'user') {
+                targetUserId = parseInt(destParts[3]);
+            } else if (destParts[2] === 'unassigned') {
+                targetUserId = null;
             }
             
-            await removeColumn(colToDelete);
-            setColToDelete(null);
-            setTargetColForTasks(''); 
+            // Pass null for unassigned, undefined for "no change" (but here we physically dropped it somewhere, so it's a change)
+            // If Dropped in unassigned -> null
+            // If Dropped in User row -> userId
+            moveItem(itemId, targetColId, targetUserId === null ? null : targetUserId);
         }
     };
 
-    const deletingColObj = colToDelete !== null ? columns.find(c => c.id === colToDelete) : null;
-    const hasTasks = deletingColObj ? deletingColObj.items.length > 0 : false;
-    const otherColumns = colToDelete !== null ? columns.filter(c => c.id !== colToDelete) : [];
+    const handleAddColumn = async () => {
+        if (!newColTitle.trim()) return;
+        await addColumn(newColTitle);
+        setNewColTitle('');
+        setIsAddingColumn(false);
+    };
+
+    const handleAddTask = async (colId: number, userId: number | null) => {
+        if (!newTaskContent.trim()) return;
+        await addItem(colId, newTaskContent, userId === null ? undefined : userId);
+        setNewTaskContent('');
+        setAddingToCell(null);
+    };
+
+    const getItems = (colId: number, userId: number | null) => {
+        const col = columns.find(c => c.id === colId);
+        if (!col) return [];
+        return col.items.filter(item => {
+            if (userId === null) return item.assignedToId === null || item.assignedToId === undefined;
+            return item.assignedToId === userId;
+        });
+    };
 
     return (
-        <div className="h-full flex flex-col w-full pt-8 relative box-border">
+        <div className="h-full flex flex-col w-full overflow-hidden bg-white">
             
-            {taskToDelete !== null && (
-                <style>{`[data-rbd-draggable-id="item-${taskToDelete}"] { opacity: 0 !important; pointer-events: none !important; }`}</style>
-            )}
-
-            <div className="flex justify-end items-center mb-6 px-6 flex-shrink-0 h-12">
-                <div className="flex gap-4 items-center">
-                    
-                    {selectedItems.length > 0 && (
-                        <div className="flex items-center gap-3 bg-gray-100 px-4 py-2 rounded-full border-[2px] border-gray-300">
-                           <span className="text-sm font-medium text-gray-800">{selectedItems.length} selected</span>
-                           <button onClick={clearSelection} className="text-xs text-red-500 font-bold hover:text-red-700 uppercase tracking-wider transition-colors">Clear</button>
-                        </div>
-                    )}
-                    
-                    <div className="flex gap-2">
-                        {isAdding ? (
-                            <div className="flex items-center gap-2">
-                                <input 
-                                    className="px-4 py-2 border-[3px] border-purple-500 rounded-full text-sm outline-none bg-white text-black font-medium w-48 transition-colors focus:bg-purple-50"
-                                    placeholder="Column Name..."
-                                    value={newColTitle}
-                                    onChange={e => setNewColTitle(e.target.value)}
-                                    onKeyDown={e => e.key === 'Enter' && handleAddColumn()}
-                                    autoFocus
-                                />
-                                <button 
-                                    onClick={handleAddColumn} 
-                                    className="bg-purple-500 text-white px-5 py-2 rounded-full text-sm font-bold border-[3px] border-purple-500 hover:bg-transparent hover:text-purple-600 transition-colors"
-                                >
-                                    Save
-                                </button>
-                                <button 
-                                    onClick={() => setIsAdding(false)} 
-                                    className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                                >
-                                    <X size={20} />
-                                </button>
-                            </div>
-                        ) : (
-                            <button 
-                                onClick={() => setIsAdding(true)}
-                                className="flex items-center gap-2 px-5 py-2.5 rounded-full border-[3px] border-purple-500 bg-white text-black font-bold text-sm hover:bg-purple-50 transition-colors group"
-                            >
-                                <Plus size={18} className="text-purple-500 group-hover:scale-110 transition-transform" /> Add Column
-                            </button>
-                        )}
-                    </div>
+            {/* Toolbar */}
+            <div className="h-16 border-b border-gray-200 flex items-center justify-between px-6 bg-gray-50 flex-shrink-0">
+                <h2 className="text-xl font-bold text-gray-800">Tablica zadań (Swimlanes)</h2>
+                <div className="flex gap-3">
+                   {isAddingColumn ? (
+                       <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-purple-200 shadow-sm">
+                           <input 
+                             autoFocus
+                             value={newColTitle}
+                             onChange={e => setNewColTitle(e.target.value)}
+                             placeholder="Nazwa kolumny..."
+                             className="px-3 py-1 text-sm outline-none w-48"
+                             onKeyDown={e => e.key === 'Enter' && handleAddColumn()}
+                           />
+                           <button onClick={handleAddColumn} className="p-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200"><Plus size={16}/></button>
+                           <button onClick={() => setIsAddingColumn(false)} className="p-1 rounded text-gray-400 hover:text-red-500"><X size={16}/></button>
+                       </div>
+                   ) : (
+                       <button onClick={() => setIsAddingColumn(true)} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium text-sm transition-colors shadow-sm">
+                           <Plus size={18} />
+                           Dodaj kolumnę
+                       </button>
+                   )}
                 </div>
-                <div className="w-4 h-full flex-shrink-0" />
             </div>
 
-            <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                
-                <div className="flex flex-col flex-1 relative overflow-hidden">
-                    <Droppable droppableId="board" direction="horizontal" type="COLUMN">
-                        {(provided) => (
-                            <div 
-                                className="kanban-columns-container flex flex-1 gap-6 overflow-x-auto items-start pb-6 pl-6"
-                                ref={provided.innerRef}
-                                {...provided.droppableProps}
-                            >
-                                {columns.map((col, index) => (
-                                    <Draggable key={col.id} draggableId={`col-${col.id}`} index={index}>
-                                        {(provided) => (
-                                            <div
-                                                ref={provided.innerRef}
-                                                {...provided.draggableProps}
-                                                {...provided.dragHandleProps}
-                                                className={`transition-opacity duration-200 ${colToDelete === col.id ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-                                            >
-                                                <Column 
-                                                    column={col} 
-                                                    onDeleteClick={() => setColToDelete(col.id)} 
+            <DragDropContext onDragEnd={handleDragEnd}>
+                <div className="flex-1 overflow-auto p-6">
+                    <div className="inline-block min-w-full">
+                        
+                        {/* Header Row (Columns) */}
+                        <div className="flex sticky top-0 z-20 shadow-sm border-b-2 border-gray-100 mb-2">
+                             {/* Corner Header */}
+                             <div className="w-56 flex-shrink-0 p-4 font-bold text-gray-500 uppercase text-xs tracking-wider flex items-center bg-gray-50 border-r border-gray-200">
+                                 Użytkownicy
+                             </div>
+                             
+                             {/* Kanban Columns Headers */}
+                             {columns.map(col => {
+                                 const isLimitExceeded = col.limit > 0 && col.items.length > col.limit;
+
+                                 return (
+                                 <div key={col.id} className={`w-80 flex-shrink-0 p-4 border-r border-gray-100 flex justify-between items-center group min-h-[57px] transition-colors
+                                     ${isLimitExceeded ? 'bg-red-50 border-red-200' : 'bg-white'}
+                                 `}>
+                                     {editingColId === col.id ? (
+                                         <div className="flex flex-col gap-2 w-full animate-in fade-in duration-200">
+                                            <input 
+                                                autoFocus
+                                                className="border-2 border-purple-300 rounded px-2 py-1 text-sm font-bold w-full outline-none focus:border-purple-500 transition-colors"
+                                                value={tempColTitle}
+                                                onChange={e => setTempColTitle(e.target.value)}
+                                                placeholder="Nazwa kolumny"
+                                            />
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-gray-500 font-medium">Limit:</span>
+                                                <input 
+                                                    type="number"
+                                                    className="border border-gray-300 rounded px-2 py-1 text-xs w-16 outline-none focus:border-purple-500"
+                                                    value={tempColLimit}
+                                                    onChange={e => setTempColLimit(parseInt(e.target.value) || 0)}
+                                                    min="0"
                                                 />
+                                                <div className="flex ml-auto gap-1">
+                                                    <button onClick={handleSaveColumn} className="p-1 text-green-600 bg-green-50 rounded hover:bg-green-100 transition-colors" title="Zapisz"><Check size={14}/></button>
+                                                    <button onClick={() => setEditingColId(null)} className="p-1 text-red-500 bg-red-50 rounded hover:bg-red-100 transition-colors" title="Anuluj"><X size={14}/></button>
+                                                </div>
+                                            </div>
+                                         </div>
+                                     ) : (
+                                         <>
+                                            <div className="flex flex-col overflow-hidden mr-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`font-bold truncate ${isLimitExceeded ? 'text-red-600' : 'text-gray-700'}`} title={col.title}>
+                                                        {col.title}
+                                                    </span>
+                                                    {isLimitExceeded && (
+                                                        <AlertCircle size={16} className="text-red-500 flex-shrink-0 animate-pulse" />
+                                                    )}
+                                                </div>
+                                                <span className={`text-xs ml-0 font-normal whitespace-nowrap flex items-center gap-1 ${isLimitExceeded ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                                                    {col.items.length} / {col.limit > 0 ? col.limit : '∞'}
+                                                    {isLimitExceeded && <span>(Limit przekroczony!)</span>}
+                                                </span>
+                                            </div>
+
+                                            <div className={`flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 pl-2 ${isLimitExceeded ? 'bg-red-50' : 'bg-white'}`}>
+                                                <button 
+                                                    onClick={() => startEditingColumn(col)}
+                                                    className="text-gray-400 hover:text-purple-600 p-1 rounded hover:bg-purple-50 transition-colors"
+                                                    title="Edytuj kolumnę"
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => { if(window.confirm('Usunąć kolumnę?')) removeColumn(col.id) }}
+                                                    className="text-gray-400 hover:text-red-500 p-1 rounded hover:bg-red-50 transition-colors"
+                                                    title="Usuń kolumnę"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                         </>
+                                     )}
+                                 </div>
+                                 );
+                             })}
+                        </div>
+
+                        {/* Swimlanes (Users) */}
+                        {users.map(user => (
+                            <div key={user.id} className="flex min-h-[140px] border-b border-gray-100 group hover:bg-gray-50/50 transition-colors">
+                                {/* Row Header (User) */}
+                                <div className="w-56 flex-shrink-0 p-4 border-r border-gray-100 bg-white sticky left-0 z-10 flex flex-col justify-center">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md">
+                                            {user.fullName.substring(0,2).toUpperCase()}
+                                        </div>
+                                        <div className="flex flex-col overflow-hidden">
+                                            <span className="font-bold text-sm text-gray-800 truncate" title={user.fullName}>{user.fullName}</span>
+                                            <span className="text-xs text-gray-400 truncate">{user.role}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Row Cells */}
+                                {columns.map(col => {
+                                    const items = getItems(col.id, user.id);
+                                    const droppableId = `col-${col.id}-user-${user.id}`;
+                                    
+                                    return (
+                                        <Droppable key={droppableId} droppableId={droppableId}>
+                                            {(provided, snapshot) => (
+                                                <div 
+                                                    ref={provided.innerRef}
+                                                    {...provided.droppableProps}
+                                                    className={`w-80 flex-shrink-0 p-3 border-r border-dashed border-gray-200 transition-colors duration-200 flex flex-col gap-2 
+                                                        ${snapshot.isDraggingOver ? 'bg-purple-50 border-purple-200' : 'bg-transparent'}
+                                                    `}
+                                                >
+                                                    {items.map((item, idx) => (
+                                                        <Task key={item.id} item={item} index={idx} />
+                                                    ))}
+                                                    {provided.placeholder}
+                                                    
+                                                    {/* Quick Add Button */}
+                                                    {addingToCell?.colId === col.id && addingToCell?.userId === user.id ? (
+                                                        <div className="bg-white p-3 rounded-xl border border-purple-200 shadow-lg animate-in fade-in zoom-in duration-200">
+                                                            <textarea 
+                                                                autoFocus
+                                                                className="w-full text-sm outline-none resize-none mb-2 bg-transparent"
+                                                                placeholder="Treść zadania..."
+                                                                rows={2}
+                                                                value={newTaskContent}
+                                                                onChange={e => setNewTaskContent(e.target.value)}
+                                                                onKeyDown={e => {
+                                                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                                                        e.preventDefault();
+                                                                        handleAddTask(col.id, user.id);
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <div className="flex justify-end gap-2">
+                                                                <button onClick={() => setAddingToCell(null)} className="p-1 text-gray-400 hover:text-gray-600 rounded bg-gray-50"><X size={14}/></button>
+                                                                <button onClick={() => handleAddTask(col.id, user.id)} className="px-3 py-1 bg-purple-600 text-white text-xs font-bold rounded-md hover:bg-purple-700">Dodaj</button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <button 
+                                                            onClick={() => setAddingToCell({colId: col.id, userId: user.id})}
+                                                            className="mt-auto w-full py-2 flex items-center justify-center gap-2 text-gray-300 hover:text-purple-600 hover:bg-purple-50 rounded-lg border border-transparent hover:border-purple-100 transition-all opacity-0 group-hover:opacity-100"
+                                                        >
+                                                            <Plus size={16} />
+                                                            <span className="text-xs font-bold">Dodaj zadanie</span>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </Droppable>
+                                    );
+                                })}
+                            </div>
+                        ))}
+
+                        {/* Unassigned Row */}
+                        <div className="flex min-h-[140px] bg-gray-50/50">
+                            <div className="w-56 flex-shrink-0 p-4 border-r border-gray-200 flex flex-col justify-center sticky left-0 z-10 bg-gray-50">
+                                <span className="font-bold text-xs uppercase text-gray-400 flex items-center gap-2">
+                                    <AlertCircle size={14} /> Nieprzypisane
+                                </span>
+                            </div>
+                            
+                            {columns.map(col => {
+                                const items = getItems(col.id, null);
+                                const droppableId = `col-${col.id}-unassigned`;
+                                
+                                return (
+                                    <Droppable key={droppableId} droppableId={droppableId}>
+                                        {(provided, snapshot) => (
+                                            <div 
+                                                ref={provided.innerRef}
+                                                {...provided.droppableProps}
+                                                className={`w-80 flex-shrink-0 p-3 border-r border-dashed border-gray-200 transition-colors duration-200 flex flex-col gap-2
+                                                     ${snapshot.isDraggingOver ? 'bg-gray-100' : ''}
+                                                `}
+                                            >
+                                                {items.map((item, idx) => (
+                                                    <Task key={item.id} item={item} index={idx} />
+                                                ))}
+                                                {provided.placeholder}
+
+                                                {addingToCell?.colId === col.id && addingToCell?.userId === null ? (
+                                                    <div className="bg-white p-3 rounded-xl border border-gray-300 shadow-lg">
+                                                        <textarea 
+                                                            autoFocus
+                                                            className="w-full text-sm outline-none resize-none mb-2 bg-transparent"
+                                                            placeholder="Treść zadania..."
+                                                            rows={2}
+                                                            value={newTaskContent}
+                                                            onChange={e => setNewTaskContent(e.target.value)}
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                                    e.preventDefault();
+                                                                    handleAddTask(col.id, null);
+                                                                }
+                                                            }}
+                                                        />
+                                                        <div className="flex justify-end gap-2">
+                                                            <button onClick={() => setAddingToCell(null)} className="p-1 text-gray-400 hover:text-gray-600 rounded bg-gray-100"><X size={14}/></button>
+                                                            <button onClick={() => handleAddTask(col.id, null)} className="px-3 py-1 bg-gray-600 text-white text-xs font-bold rounded-md hover:bg-gray-700">Dodaj</button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <button 
+                                                        onClick={() => setAddingToCell({colId: col.id, userId: null})}
+                                                        className="mt-auto w-full py-2 flex items-center justify-center gap-2 text-gray-300 hover:text-gray-500 hover:bg-gray-200 rounded-lg transition-all opacity-50 hover:opacity-100"
+                                                    >
+                                                        <Plus size={16} />
+                                                        <span className="text-xs font-bold">Dodaj zadanie</span>
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
-                                    </Draggable>
-                                ))}
-                                {provided.placeholder}
-                            </div>
-                        )}
-                    </Droppable>
-                </div>
-
-                <div className="w-full h-[180px] bg-[#EBEBEB] border-t-2 border-[#d1d5dc] relative flex-shrink-0 z-20">
-                    
-                    <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 w-1/2 h-24 z-50">
-                        <Droppable droppableId="trash-zone-col" type="COLUMN" isDropDisabled={dragType !== 'COLUMN'}>
-                            {(provided, snapshot) => (
-                                <div
-                                    ref={provided.innerRef}
-                                    {...provided.droppableProps}
-                                    className={`absolute inset-0 rounded-full border-[3px] flex items-center justify-center transition-all duration-300 pointer-events-auto ${
-                                        dragType === 'COLUMN' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'
-                                    } ${
-                                        snapshot.isDraggingOver 
-                                            ? 'bg-red-200 border-red-500 text-red-600 scale-[1.02]' 
-                                            : 'bg-red-50 border-red-400 text-red-500'
-                                    }`}
-                                >
-                                    <Trash2 size={40} className={`transition-transform duration-300 ${snapshot.isDraggingOver ? 'scale-110' : 'scale-100'}`} />
-                                    <div className="hidden">{provided.placeholder}</div>
-                                </div>
-                            )}
-                        </Droppable>
-
-                        <Droppable droppableId="trash-zone-task" isDropDisabled={dragType === 'COLUMN'}>
-                            {(provided, snapshot) => (
-                                <div
-                                    ref={provided.innerRef}
-                                    {...provided.droppableProps}
-                                    className={`absolute inset-0 rounded-full border-[3px] flex items-center justify-center transition-all duration-300 pointer-events-auto ${
-                                        dragType !== 'COLUMN' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'
-                                    } ${
-                                        snapshot.isDraggingOver 
-                                            ? 'bg-red-200 border-red-500 text-red-600 scale-[1.02]' 
-                                            : 'bg-red-50 border-red-400 text-red-500 hover:bg-red-100 hover:text-red-600'
-                                    }`}
-                                >
-                                    <Trash2 size={40} className={`transition-transform duration-300 ${snapshot.isDraggingOver ? 'scale-110' : 'scale-100'}`} />
-                                    <div className="hidden">{provided.placeholder}</div>
-                                </div>
-                            )}
-                        </Droppable>
-                    </div>
-
-                    <div className="absolute bottom-4 left-6 text-[11px] leading-relaxed text-gray-500 font-medium pointer-events-none select-none z-0">
-                        <p>Copyright Drużyna pierścienia 2026</p>
-                        <p>Jakub Malinowski, Piotr Ostaszewski, Jakub Klimas, Adrian Skamarski, Radosław Matusiak</p>
+                                    </Droppable>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
-
             </DragDropContext>
-
-            {colToDelete !== null && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm transition-all px-4">
-                    <div className="bg-[#EBEBEB] p-6 rounded-2xl shadow-xl flex flex-col items-center max-w-sm w-full border-2 border-[#d1d5dc] box-border">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">Usunąć kolumnę?</h2>
-                        {hasTasks ? (
-                            <div className="w-full flex flex-col mb-6">
-                                <p className="text-gray-700 text-sm text-center mb-3 font-medium">
-                                    Ta kolumna zawiera <b>{deletingColObj?.items.length}</b> zadań. Co chcesz z nimi zrobić?
-                                </p>
-                                {otherColumns.length > 0 ? (
-                                    <select 
-                                        className="w-full py-2 px-3 border-2 border-[#d1d5dc] bg-white text-black text-sm outline-none rounded-none focus:border-purple-500 transition-colors"
-                                        value={targetColForTasks}
-                                        onChange={(e) => setTargetColForTasks(e.target.value)}
-                                    >
-                                        <option value="">-- Usuń wszystkie zadania --</option>
-                                        {otherColumns.map(c => (
-                                            <option key={c.id} value={c.id}>Przenieś do: {c.title}</option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <p className="text-red-500 text-xs text-center font-bold uppercase mt-1">Brak innych kolumn - zadania zostaną trwale skasowane.</p>
-                                )}
-                            </div>
-                        ) : (
-                            <p className="text-gray-700 text-sm text-center mb-6 font-medium">Ta operacja jest nieodwracalna. Kolumna zostanie trwale usunięta.</p>
-                        )}
-                        <div className="flex justify-center gap-6 w-full">
-                            <button onClick={handleConfirmDeleteColumn} className="w-24 py-1.5 rounded-none bg-[#FF6B6B] text-black font-bold hover:bg-[#ff5252] border border-[#FF6B6B] transition-colors text-sm">Tak</button>
-                            <button onClick={() => setColToDelete(null)} className="w-24 py-1.5 rounded-none bg-white text-black font-bold hover:bg-gray-50 border-2 border-[#d1d5dc] transition-colors text-sm">Nie</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-            {taskToDelete !== null && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm transition-all px-4">
-                    <div className="bg-[#EBEBEB] p-6 rounded-2xl shadow-xl flex flex-col items-center max-w-sm w-full border-2 border-[#d1d5dc] box-border">
-                        <h2 className="text-xl font-bold text-gray-800 mb-2 text-center">Usunąć zadanie?</h2>
-                        <p className="text-gray-700 text-sm text-center mb-6 font-medium">Ta operacja jest nieodwracalna.</p>
-                        <div className="flex justify-center gap-6 w-full">
-                            <button onClick={() => { removeItem(taskToDelete); setTaskToDelete(null); }} className="w-24 py-1.5 rounded-none bg-[#FF6B6B] text-black font-bold hover:bg-[#ff5252] border border-[#FF6B6B] transition-colors text-sm">Tak</button>
-                            <button onClick={() => setTaskToDelete(null)} className="w-24 py-1.5 rounded-none bg-white text-black font-bold hover:bg-gray-50 border-2 border-[#d1d5dc] transition-colors text-sm">Nie</button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
