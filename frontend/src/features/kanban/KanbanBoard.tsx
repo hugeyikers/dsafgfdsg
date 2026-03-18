@@ -12,7 +12,6 @@ const KanbanBoard = () => {
     const [dragType, setDragType] = useState<string | null>(null);
     const [colToDelete, setColToDelete] = useState<number | null>(null);
     const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
-
     const [targetColForTasks, setTargetColForTasks] = useState<string>('');
 
     useEffect(() => {
@@ -25,31 +24,19 @@ const KanbanBoard = () => {
 
     const handleDragEnd = (result: any) => {
         setDragType(null);
-
         const { destination, source, draggableId, type } = result;
-
         if (!destination) return;
-
-        if (
-            destination.droppableId === source.droppableId &&
-            destination.index === source.index
-        ) {
-            return;
-        }
+        if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
         if (destination.droppableId === 'trash-zone-col') {
             const colId = parseInt(draggableId.split('-')[1]);
-            if (!isNaN(colId)) {
-                setColToDelete(colId);
-            }
+            if (!isNaN(colId)) setColToDelete(colId);
             return;
         }
 
         if (destination.droppableId === 'trash-zone-task') {
             const itemId = parseInt(draggableId.split('-')[1]);
-            if (!isNaN(itemId)) {
-                setTaskToDelete(itemId);
-            }
+            if (!isNaN(itemId)) setTaskToDelete(itemId);
             return;
         }
 
@@ -57,7 +44,6 @@ const KanbanBoard = () => {
             const newColumnOrder = Array.from(columns);
             const [removed] = newColumnOrder.splice(source.index, 1);
             newColumnOrder.splice(destination.index, 0, removed);
-            
             const newOrderIds = newColumnOrder.map(c => c.id);
             reorderColumns(newOrderIds);
             return;
@@ -65,7 +51,6 @@ const KanbanBoard = () => {
 
         const itemId = parseInt(draggableId.split('-')[1]);
         const targetColId = parseInt(destination.droppableId.split('-')[1]);
-
         moveItem(itemId, targetColId);
     };
 
@@ -91,13 +76,8 @@ const KanbanBoard = () => {
             
             await removeColumn(colToDelete);
             setColToDelete(null);
-            setTargetColForTasks('');
+            setTargetColForTasks(''); 
         }
-    };
-
-    const handleCancelDeleteColumn = () => {
-        setColToDelete(null);
-        setTargetColForTasks('');
     };
 
     const deletingColObj = colToDelete !== null ? columns.find(c => c.id === colToDelete) : null;
@@ -105,7 +85,7 @@ const KanbanBoard = () => {
     const otherColumns = colToDelete !== null ? columns.filter(c => c.id !== colToDelete) : [];
 
     return (
-        <div className="h-full flex flex-col w-full pt-8 relative">
+        <div className="h-full flex flex-col w-full pt-8 relative box-border">
             
             {taskToDelete !== null && (
                 <style>{`[data-rbd-draggable-id="item-${taskToDelete}"] { opacity: 0 !important; pointer-events: none !important; }`}</style>
@@ -155,14 +135,16 @@ const KanbanBoard = () => {
                         )}
                     </div>
                 </div>
+                <div className="w-4 h-full flex-shrink-0" />
             </div>
 
             <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                <div className="flex flex-col flex-1 overflow-hidden">
+                
+                <div className="flex flex-col flex-1 relative overflow-hidden">
                     <Droppable droppableId="board" direction="horizontal" type="COLUMN">
                         {(provided) => (
                             <div 
-                                className="kanban-columns-container flex flex-1 gap-6 overflow-x-auto items-start pb-4"
+                                className="kanban-columns-container flex flex-1 gap-6 overflow-x-auto items-start pb-6 pl-6"
                                 ref={provided.innerRef}
                                 {...provided.droppableProps}
                             >
@@ -175,7 +157,10 @@ const KanbanBoard = () => {
                                                 {...provided.dragHandleProps}
                                                 className={`transition-opacity duration-200 ${colToDelete === col.id ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
                                             >
-                                                <Column column={col} />
+                                                <Column 
+                                                    column={col} 
+                                                    onDeleteClick={() => setColToDelete(col.id)} 
+                                                />
                                             </div>
                                         )}
                                     </Draggable>
@@ -184,15 +169,18 @@ const KanbanBoard = () => {
                             </div>
                         )}
                     </Droppable>
+                </div>
 
-                    <div className="relative w-1/2 self-center mt-0 mb-24 h-24 flex-shrink-0">
+                <div className="w-full h-[180px] bg-[#EBEBEB] border-t-2 border-[#d1d5dc] relative flex-shrink-0 z-20">
+                    
+                    <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 w-1/2 h-24 z-50">
                         <Droppable droppableId="trash-zone-col" type="COLUMN" isDropDisabled={dragType !== 'COLUMN'}>
                             {(provided, snapshot) => (
                                 <div
                                     ref={provided.innerRef}
                                     {...provided.droppableProps}
-                                    className={`absolute inset-0 rounded-full border-[3px] flex items-center justify-center transition-all duration-300 ${
-                                        dragType === 'COLUMN' ? 'z-10' : 'z-0 opacity-0 pointer-events-none'
+                                    className={`absolute inset-0 rounded-full border-[3px] flex items-center justify-center transition-all duration-300 pointer-events-auto ${
+                                        dragType === 'COLUMN' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'
                                     } ${
                                         snapshot.isDraggingOver 
                                             ? 'bg-red-200 border-red-500 text-red-600 scale-[1.02]' 
@@ -210,8 +198,8 @@ const KanbanBoard = () => {
                                 <div
                                     ref={provided.innerRef}
                                     {...provided.droppableProps}
-                                    className={`absolute inset-0 rounded-full border-[3px] flex items-center justify-center transition-all duration-300 ${
-                                        dragType !== 'COLUMN' ? 'z-10' : 'z-0 opacity-0 pointer-events-none'
+                                    className={`absolute inset-0 rounded-full border-[3px] flex items-center justify-center transition-all duration-300 pointer-events-auto ${
+                                        dragType !== 'COLUMN' ? 'z-10 opacity-100' : 'z-0 opacity-0 pointer-events-none'
                                     } ${
                                         snapshot.isDraggingOver 
                                             ? 'bg-red-200 border-red-500 text-red-600 scale-[1.02]' 
@@ -224,19 +212,19 @@ const KanbanBoard = () => {
                             )}
                         </Droppable>
                     </div>
-                </div>
-            </DragDropContext>
 
-            <div className="absolute bottom-4 left-6 text-[11px] leading-relaxed text-gray-400 font-medium pointer-events-none select-none z-0">
-                <p>Copyright Drużyna Pierścienia 2026</p>
-                <p>Jakub Malinowski, Piotr Ostaszewski, Jakub Klimas, Adrian Skamarski, Radosław Matusiak</p>
-            </div>
+                    <div className="absolute bottom-4 left-6 text-[11px] leading-relaxed text-gray-500 font-medium pointer-events-none select-none z-0">
+                        <p>Copyright Drużyna pierścienia 2026</p>
+                        <p>Jakub Malinowski, Piotr Ostaszewski, Jakub Klimas, Adrian Skamarski, Radosław Matusiak</p>
+                    </div>
+                </div>
+
+            </DragDropContext>
 
             {colToDelete !== null && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm transition-all px-4">
-                    <div className="bg-[#EBEBEB] p-6 rounded-2xl shadow-xl flex flex-col items-center max-w-sm w-full border-2 border-gray-400 box-border">
+                    <div className="bg-[#EBEBEB] p-6 rounded-2xl shadow-xl flex flex-col items-center max-w-sm w-full border-2 border-[#d1d5dc] box-border">
                         <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">Usunąć kolumnę?</h2>
-                        
                         {hasTasks ? (
                             <div className="w-full flex flex-col mb-6">
                                 <p className="text-gray-700 text-sm text-center mb-3 font-medium">
@@ -244,7 +232,7 @@ const KanbanBoard = () => {
                                 </p>
                                 {otherColumns.length > 0 ? (
                                     <select 
-                                        className="w-full py-2 px-3 border-2 border-gray-400 bg-white text-black text-sm outline-none rounded-none focus:border-purple-500 transition-colors"
+                                        className="w-full py-2 px-3 border-2 border-[#d1d5dc] bg-white text-black text-sm outline-none rounded-none focus:border-purple-500 transition-colors"
                                         value={targetColForTasks}
                                         onChange={(e) => setTargetColForTasks(e.target.value)}
                                     >
@@ -258,52 +246,23 @@ const KanbanBoard = () => {
                                 )}
                             </div>
                         ) : (
-                            <p className="text-gray-700 text-sm text-center mb-6 font-medium">
-                                Ta operacja jest nieodwracalna. Kolumna zostanie trwale usunięta.
-                            </p>
+                            <p className="text-gray-700 text-sm text-center mb-6 font-medium">Ta operacja jest nieodwracalna. Kolumna zostanie trwale usunięta.</p>
                         )}
-
                         <div className="flex justify-center gap-6 w-full">
-                            <button 
-                                onClick={handleConfirmDeleteColumn}
-                                className="w-24 py-1.5 rounded-none bg-[#FF6B6B] text-black font-bold hover:bg-[#ff5252] border border-[#FF6B6B] transition-colors text-sm"
-                            >
-                                Tak
-                            </button>
-                            <button 
-                                onClick={handleCancelDeleteColumn}
-                                className="w-24 py-1.5 rounded-none bg-white text-black font-bold hover:bg-gray-50 border-2 border-gray-400 transition-colors text-sm"
-                            >
-                                Nie
-                            </button>
+                            <button onClick={handleConfirmDeleteColumn} className="w-24 py-1.5 rounded-none bg-[#FF6B6B] text-black font-bold hover:bg-[#ff5252] border border-[#FF6B6B] transition-colors text-sm">Tak</button>
+                            <button onClick={() => setColToDelete(null)} className="w-24 py-1.5 rounded-none bg-white text-black font-bold hover:bg-gray-50 border-2 border-[#d1d5dc] transition-colors text-sm">Nie</button>
                         </div>
                     </div>
                 </div>
             )}
-
             {taskToDelete !== null && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm transition-all px-4">
-                    <div className="bg-[#EBEBEB] p-6 rounded-2xl shadow-xl flex flex-col items-center max-w-sm w-full border-2 border-gray-400 box-border">
+                    <div className="bg-[#EBEBEB] p-6 rounded-2xl shadow-xl flex flex-col items-center max-w-sm w-full border-2 border-[#d1d5dc] box-border">
                         <h2 className="text-xl font-bold text-gray-800 mb-2 text-center">Usunąć zadanie?</h2>
-                        <p className="text-gray-700 text-sm text-center mb-6 font-medium">
-                            Ta operacja jest nieodwracalna. Zadanie zostanie trwale skasowane z tablicy.
-                        </p>
+                        <p className="text-gray-700 text-sm text-center mb-6 font-medium">Ta operacja jest nieodwracalna.</p>
                         <div className="flex justify-center gap-6 w-full">
-                            <button 
-                                onClick={() => {
-                                    removeItem(taskToDelete);
-                                    setTaskToDelete(null);
-                                }}
-                                className="w-24 py-1.5 rounded-none bg-[#FF6B6B] text-black font-bold hover:bg-[#ff5252] border border-[#FF6B6B] transition-colors text-sm"
-                            >
-                                Tak
-                            </button>
-                            <button 
-                                onClick={() => setTaskToDelete(null)}
-                                className="w-24 py-1.5 rounded-none bg-white text-black font-bold hover:bg-gray-50 border-2 border-gray-400 transition-colors text-sm"
-                            >
-                                Nie
-                            </button>
+                            <button onClick={() => { removeItem(taskToDelete); setTaskToDelete(null); }} className="w-24 py-1.5 rounded-none bg-[#FF6B6B] text-black font-bold hover:bg-[#ff5252] border border-[#FF6B6B] transition-colors text-sm">Tak</button>
+                            <button onClick={() => setTaskToDelete(null)} className="w-24 py-1.5 rounded-none bg-white text-black font-bold hover:bg-gray-50 border-2 border-[#d1d5dc] transition-colors text-sm">Nie</button>
                         </div>
                     </div>
                 </div>
