@@ -1,105 +1,85 @@
-<!-- ABOUT THE PROJECT -->
-# Aplikacja typu Kanban
+# Dokumentacja Projektu: Aplikacja Kanban
 
-Wielowarstwowa aplikacja webowa (full-stack) zbudowana w oparciu o backend w NestJS oraz frontend w React (Vite).
+## 1. Wprowadzenie
+Aplikacja Kanban to wielowarstwowa aplikacja webowa typu full-stack, służąca do zarządzania zadaniami. Projekt został stworzony z myślą o efektywnej organizacji pracy, wykorzystując nowoczesne technologie frontendowe oraz backendowe. 
 
-## 📖 O projekcie
+Projekt jest realizowany na Uniwersytecie Warmińsko-Mazurskim w Olsztynie w ramach przedmiotu "Projekt Zespołowy" we współpracy z firmą Billenium.
 
-Projekt realizowany w ramach przedmiotu **"Projekt Zespołowy"** na **Uniwersytecie Warmińsko-Mazurskim w Olsztynie** we współpracy z firmą **Billenium**.
+## 2. Zespół Projektowy
+W skład zespołu wchodzą:
+- Piotr Ostaszewski
+- Jakub Malinowski
+- Adrian Skamarski
+- Radosław Matusiak
+- Jakub Klimas
 
-**Członkowie zespołu:**
-- [Piotr Ostaszewski](https://github.com/PET3R12)
-- [Jakub Malinowski](https://github.com/Nexeros)
-- [Adrian Skamarski](https://github.com/hugeyikers)
-- [Radosław Matusiak](https://github.com/gilo0)
-- [Jakub Klimas](https://github.com/JunglersYikes)
+## 3. Stack Technologiczny
 
-## 💻 Stack Technologiczny
-
-**Frontend:**
-
+### 3.1. Frontend
 - React (Vite)
 - TypeScript
 - Tailwind CSS
-- Zustand (Zarządzanie stanem)
-**Backend:**
+- Zustand
+
+### 3.2. Backend
 - NestJS
 - TypeScript
 - Prisma ORM
-- Baza danych (obsługiwana przez Prisma)
-- JWT (Autoryzacja i autentykacja)
+- Relacyjna baza danych
+- JWT
 
-## Struktura Projektu
+## 4. Architektura i Struktura Katalogów
+Aplikacja została podzielona na dwa oddzielne środowiska:
+- `backend/` - Zawiera serwerową część aplikacji (API) napisaną w frameworku NestJS. Odpowiada za logikę biznesową, bezpieczeństwo (JWT) oraz komunikację z bazą danych (Prisma).
+- `frontend/` - Zawiera kliencką część aplikacji stworzoną w bibliotece React z użyciem Vite, odpowiadającą za interfejs użytkownika.
 
-- `backend/` - Serwerowa aplikacja API (NestJS + Prisma).
-- `frontend/` - Kliencka aplikacja webowa (React + Vite).
-
-## Prerequirements
-
-- Node.js (Zalecana najnowsza stabilna wersja / LTS)
+## 5. Wymagania Wstępne
+Do poprawnego uruchomienia projektu w środowisku deweloperskim niezbędne są:
+- Node.js (w najnowszej stabilnej wersji lub LTS)
 - npm
 
-##  Instalacja
+## 6. Instalacja
+Aby zainstalować wszystkie wymagane zależności dla całego środowiska, należy w głównym katalogu projektu uruchomić polecenie:
 
-1. Aby zainstalować wszystkie wymagane pakiety należy w roocie 
-
-```
+```bash
 npm run install:all
 ```
 
-_(Alternatywnie, możesz uruchomić komendę `npm install` w każdym z trzech folderów osobno: w głównym katalogu, w `backend/` oraz `frontend/`)_
+## 7. Uruchamianie Aplikacji
+Projekt oferuje dwa zautomatyzowane sposoby na jednoczesne uruchomienie frontendu i backendu. W trybie deweloperskim backend obsługuje HMR, a frontend automatycznie odświeża widok po zmianach w plikach.
 
-## 🏃‍♂️ Uruchamianie aplikacji
+### Metoda 1: Skrypt npm
+Z poziomu głównego katalogu projektu:
 
-Istnieją dwa proste sposoby na jednoczesne uruchomienie całego projektu (Frontendu i Backendu):
-
-### Opcja 1: Przy użyciu skryptu npm (Zalecane)
-
-Uruchom poniższą komendę w głównym katalogu projektu:
-
-```
+```bash
 npm start
 ```
 
-_Dzięki paczce `concurrently` komenda ta uruchomi oba serwery (backend i frontend) równolegle w jednym oknie terminala._
+### Metoda 2: Skrypt Windows (Batch)
+Należy uruchomić plik wykonywalny znajdujący się w głównym katalogu:
 
-### Opcja 2: Przy użyciu skryptu Windows (Batch)
+```cmd
+start_project.bat
+```
 
-Kliknij dwukrotnie plik `start_project.bat` znajdujący się w głównym katalogu projektu.
+## 8. Dostęp do Usług
+Po uruchomieniu środowiska usługi dostępne są pod następującymi adresami:
+- Kliencka aplikacja webowa (Frontend): http://localhost:5173
+- Interfejs API (Backend): http://localhost:3000
 
-## 🌍 Dostęp do aplikacji
+## 9. Zarządzanie Bazą Danych (Prisma)
+Wszelkie operacje na bazie danych realizowane są poprzez narzędzie Prisma, operujące wewnątrz katalogu `backend/`.
 
-Po pomyślnym starcie obu serwerów:
+Aktualizacja struktury bazy danych na podstawie pliku `schema.prisma`:
 
-- **Frontend (Aplikacja):** Otwórz [http://localhost:5173](http://localhost:5173 "null") w swojej przeglądarce.
-    
-- **Backend (API):** Interfejs programistyczny działa pod adresem [http://localhost:3000](http://localhost:3000 "null").
-    
+```bash
+cd backend
+npx prisma db push
+```
 
-### 🛠 Tryb deweloperski
+Wypełnienie bazy danych danymi początkowymi:
 
-- **Backend:** Wszelkie zmiany w kodzie wewnątrz folderu `backend/` automatycznie wywołają przeładowanie serwera (HMR).
-    
-- **Frontend:** Zmiany w plikach w folderze `frontend/` natychmiastowo i automatycznie odświeżą widok w przeglądarce.
-    
-
-## 🗄️ Baza Danych (Prisma)
-
-Backend wykorzystuje narzędzie Prisma do komunikacji z bazą danych. Jeśli potrzebujesz wprowadzić zmiany w schemacie bazy danych, postępuj zgodnie z poniższymi krokami:
-
-1. Edytuj schemat w pliku `backend/prisma/schema.prisma`.
-    
-2. Zastosuj migracje / wypchnij zmiany do struktury bazy danych:
-    
-    ```
-    cd backend
-    npx prisma db push
-    ```
-    
-3. Wygeneruj dane początkowe/testowe w bazie (opcjonalnie):
-    
-    ```
-    cd backend
-    npx prisma db seed
-    ```
-### Stack Technologiczny:
+```bash
+cd backend
+npx prisma db seed
+```
