@@ -1,17 +1,117 @@
 import React, { useEffect, useState } from 'react';
 import { useUserStore, User } from '../store/useUserStore';
+import { useKanbanStore } from '../store/useKanbanStore';
 import { Trash2, UserCog, UserPlus, X, Save, Key, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 
+// --- KOMPONENT MODALA DO USUWANIA UŻYTKOWNIKA ---
+const DeleteUserModal = ({ userToDelete, onClose }: { userToDelete: User, onClose: () => void }) => {
+    const { handleUserDeletionTasks } = useKanbanStore();
+    const { deleteUser, users } = useUserStore();
+    const [action, setAction] = useState<'reassign' | 'unassign' | 'delete'>('unassign');
+    const [targetUserId, setTargetUserId] = useState<number | ''>('');
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Lista użytkowników bez tego, którego właśnie usuwamy
+    const availableUsers = users.filter(u => u.id !== userToDelete.id);
+
+    const confirmDelete = async () => {
+        setIsDeleting(true);
+        try {
+            // 1. Zrób porządek z taskami za pomocą metody w useKanbanStore
+            if (handleUserDeletionTasks) {
+               await handleUserDeletionTasks(userToDelete.id, action, targetUserId === '' ? null : Number(targetUserId));
+            }
+            // 2. Trwale usuń usera
+            await deleteUser(userToDelete.id);
+            onClose();
+        } catch (error) {
+            console.error("Błąd podczas usuwania użytkownika:", error);
+            alert("Wystąpił błąd podczas usuwania użytkownika i jego zadań.");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white p-6 rounded-2xl shadow-2xl w-[400px] max-w-full animate-in fade-in zoom-in duration-200 border-t-4 border-red-500">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <Trash2 className="text-red-500" size={24} />
+                        Usuwanie konta
+                    </h3>
+                    <button onClick={onClose} className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+                
+                <p className="text-sm text-gray-600 mb-2">
+                    Usuwasz użytkownika: <span className="font-bold text-gray-800">{userToDelete.fullName}</span>.
+                </p>
+                <p className="text-sm text-gray-600 mb-6">Co zrobić z przypisanymi do niego zadaniami?</p>
+                
+                <div className="flex flex-col gap-4 mb-8 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <label className="flex items-center gap-3 text-sm cursor-pointer group">
+                        <input type="radio" name="action" checked={action === 'unassign'} onChange={() => setAction('unassign')} className="w-4 h-4 text-purple-600 accent-purple-600" />
+                        <span className="group-hover:text-purple-700 transition-colors">Przenieś do "Nieprzypisane"</span>
+                    </label>
+                    <label className="flex items-center gap-3 text-sm cursor-pointer group">
+                        <input type="radio" name="action" checked={action === 'delete'} onChange={() => setAction('delete')} className="w-4 h-4 text-red-600 accent-red-600" />
+                        <span className="text-red-600 font-medium group-hover:text-red-700 transition-colors">Usuń bezpowrotnie zadania</span>
+                    </label>
+                    <label className="flex flex-col gap-3 text-sm cursor-pointer">
+                        <div className="flex items-center gap-3 group">
+                            <input type="radio" name="action" checked={action === 'reassign'} onChange={() => setAction('reassign')} className="w-4 h-4 text-purple-600 accent-purple-600" />
+                            <span className="group-hover:text-purple-700 transition-colors">Przypisz do innej osoby</span>
+                        </div>
+                        {action === 'reassign' && (
+                            <select 
+                                value={targetUserId} 
+                                onChange={e => setTargetUserId(e.target.value as any)}
+                                className="ml-7 p-2.5 border border-purple-200 rounded-lg outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 bg-white"
+                            >
+                                <option value="" disabled>-- Wybierz nowego wykonawcę --</option>
+                                {availableUsers.map(u => (
+                                    <option key={u.id} value={u.id}>{u.fullName}</option>
+                                ))}
+                            </select>
+                        )}
+                    </label>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                    <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm">
+                        Anuluj
+                    </button>
+                    <button 
+                        disabled={isDeleting || (action === 'reassign' && targetUserId === '')} 
+                        onClick={confirmDelete} 
+                        className="px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                        {isDeleting ? 'Usuwanie...' : 'Potwierdź usunięcie'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+// --- GŁÓWNY KOMPONENT USER MANAGEMENT ---
 const UserManagement = () => {
-  const { users, fetchUsers, createUser, updateUserRole, updateUserPassword, deleteUser, isLoading, error } = useUserStore();
+  const { users, fetchUsers, createUser, updateUserRole, updateUserPassword, isLoading, error } = useUserStore();
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  
+  // Stan do modala usuwania użytkownika
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  
   const [selectedUserForPassword, setSelectedUserForPassword] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   
   const [newUser, setNewUser] = useState({ fullName: '', email: '', password: '', role: 'USER' as const });
-  const [editingUserId, setEditingUserId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -29,10 +129,9 @@ const UserManagement = () => {
     }
   };
 
-  const handleDeleteUser = async (id: number) => {
-    if (window.confirm('Czy na pewno chcesz usunąć tego użytkownika?')) {
-      await deleteUser(id);
-    }
+  const handleDeleteUserClick = (user: User) => {
+    // Zamiast window.confirm ustawiamy usera do usunięcia, co wywoła nasz nowy Modal
+    setUserToDelete(user);
   };
 
   const handleRoleChange = async (user: User, newRole: 'ADMINISTRATOR' | 'USER') => {
@@ -52,7 +151,6 @@ const UserManagement = () => {
     e.preventDefault();
     if (!selectedUserForPassword || !newPassword) return;
     
-    // Dodatkowe, proste potwierdzenie w oknie dialogowym przeglądarki
     if (!window.confirm(`Czy na pewno zmienić hasło dla użytkownika ${selectedUserForPassword.fullName}? Ta operacja jest nieodwracalna.`)) {
       return;
     }
@@ -111,10 +209,10 @@ const UserManagement = () => {
                   <select
                     value={user.role}
                     onChange={(e) => handleRoleChange(user, e.target.value as 'ADMINISTRATOR' | 'USER')}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wider
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wider outline-none cursor-pointer
                       ${user.role === 'ADMINISTRATOR' 
-                        ? 'border-purple-200 bg-purple-50 text-purple-700' 
-                        : 'border-blue-200 bg-blue-50 text-blue-700'}
+                        ? 'border-purple-200 bg-purple-50 text-purple-700 focus:ring-purple-500' 
+                        : 'border-blue-200 bg-blue-50 text-blue-700 focus:ring-blue-500'}
                     `}
                   >
                     <option value="USER">User</option>
@@ -131,7 +229,7 @@ const UserManagement = () => {
                       <Key size={18} />
                     </button>
                     <button
-                      onClick={() => handleDeleteUser(user.id)}
+                      onClick={() => handleDeleteUserClick(user)}
                       className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
                       title="Usuń użytkownika"
                     >
@@ -151,6 +249,14 @@ const UserManagement = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Wyrenderuj Modal usuwania użytkownika, jeśli wybrano jakiegoś */}
+      {userToDelete && (
+          <DeleteUserModal 
+             userToDelete={userToDelete} 
+             onClose={() => setUserToDelete(null)} 
+          />
+      )}
 
       {/* Modal - Zmiana hasła */}
       {isPasswordModalOpen && selectedUserForPassword && (
@@ -276,7 +382,7 @@ const UserManagement = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Rola</label>
                 <select
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white cursor-pointer"
                   value={newUser.role}
                   onChange={(e) => setNewUser({...newUser, role: e.target.value as 'ADMINISTRATOR' | 'USER'})}
                 >

@@ -43,6 +43,9 @@ interface KanbanState {
   toggleSelection: (itemId: number) => void;
   clearSelection: () => void;
   reorderColumns: (newOrderIds: number[]) => Promise<void>;
+  
+  // Nowa metoda do obsługi zadań przy usuwaniu użytkownika
+  handleUserDeletionTasks: (sourceUserId: number, action: 'reassign' | 'unassign' | 'delete', targetUserId?: number | null) => Promise<void>;
 }
 
 export const useKanbanStore = create<KanbanState>((set, get) => ({
@@ -141,17 +144,6 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
           if (targetAssignedToId !== undefined) {
               payload.targetAssignedToId = targetAssignedToId;
           }
-          // Using move-batch logic or simple update? 
-          // Previous code used `move-batch` for single item moves too.
-          // Let's ensure backend `move-batch` handles assignedToId or use update implementation.
-          // The backend `moveBatch` implementation I read earlier likely DOES NOT handle assignedToId yet.
-          // I should verify backend.
-          // `kanban.service.ts` moveBatch: `data: { columnId: targetColumnId, order: nextOrder }` - NO assignedToId.
-          
-          // So I should use `updateItem` (singular) logic via `patch /items/:id` or update moveBatch.
-          // But I want a clean implementation.
-          // Let's use `updateItem` logic which maps to `updateItem` on backend.
-          // Backend `updateItem` uses `dto`. `UpdateItemDto` now has `assignedToId`.
           
           const patchPayload: any = { columnId: targetColumnId };
           if (targetAssignedToId !== undefined) patchPayload.assignedToId = targetAssignedToId;
@@ -197,5 +189,26 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
       });
   },
   
-  clearSelection: () => set({ selectedItems: [] })
+  clearSelection: () => set({ selectedItems: [] }),
+
+  // Metoda przetwarzająca zadania przed usunięciem użytkownika z bazy
+  handleUserDeletionTasks: async (sourceUserId, action, targetUserId) => {
+    try {
+        // Pobieramy wszystkie zadania przypisane do usuwanego użytkownika
+        const itemsToProcess = get().columns.flatMap(c => c.items).filter(i => i.assignedToId === sourceUserId);
+        
+        for (const item of itemsToProcess) {
+            if (action === 'delete') {
+                await client.delete(`/kanban/items/${item.id}`);
+            } else {
+                await client.patch(`/kanban/items/${item.id}`, { 
+                    assignedToId: action === 'unassign' ? null : targetUserId 
+                });
+            }
+        }
+        await get().fetchBoard();
+    } catch (e) {
+        console.error("Błąd podczas przetwarzania zadań usuwanego użytkownika:", e);
+    }
+  }
 }));
