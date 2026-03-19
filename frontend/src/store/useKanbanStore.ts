@@ -44,8 +44,8 @@ interface KanbanState {
   clearSelection: () => void;
   reorderColumns: (newOrderIds: number[]) => Promise<void>;
   
-  // Nowa metoda do obsługi zadań przy usuwaniu użytkownika
   handleUserDeletionTasks: (sourceUserId: number, action: 'reassign' | 'unassign' | 'delete', targetUserId?: number | null) => Promise<void>;
+  handleColumnDeletionTasks: (sourceColumnId: number, action: 'move' | 'delete', targetColumnId?: number) => Promise<void>;
 }
 
 export const useKanbanStore = create<KanbanState>((set, get) => ({
@@ -103,8 +103,6 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
 
   updateItem: async (id, content, assignedToId) => {
       try {
-          // assignedToId value of undefined means no change, but we want to allow null to unassign.
-          // We pass it in payload only if it's explicitly passed (including null)
           const payload: any = { content };
           if (assignedToId !== undefined) {
              payload.assignedToId = assignedToId;
@@ -191,10 +189,8 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
   
   clearSelection: () => set({ selectedItems: [] }),
 
-  // Metoda przetwarzająca zadania przed usunięciem użytkownika z bazy
   handleUserDeletionTasks: async (sourceUserId, action, targetUserId) => {
     try {
-        // Pobieramy wszystkie zadania przypisane do usuwanego użytkownika
         const itemsToProcess = get().columns.flatMap(c => c.items).filter(i => i.assignedToId === sourceUserId);
         
         for (const item of itemsToProcess) {
@@ -210,5 +206,24 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     } catch (e) {
         console.error("Błąd podczas przetwarzania zadań usuwanego użytkownika:", e);
     }
+  },
+
+  // NOWA METODA: przenosi lub usuwa zadania przed usunięciem kolumny
+  handleColumnDeletionTasks: async (sourceColumnId, action, targetColumnId) => {
+      try {
+          const sourceCol = get().columns.find(c => c.id === sourceColumnId);
+          if (!sourceCol) return;
+
+          for (const item of sourceCol.items) {
+              if (action === 'delete') {
+                  await client.delete(`/kanban/items/${item.id}`);
+              } else if (action === 'move' && targetColumnId !== undefined) {
+                  await client.patch(`/kanban/items/${item.id}`, { columnId: targetColumnId });
+              }
+          }
+          await get().fetchBoard();
+      } catch (e) {
+          console.error("Błąd podczas przetwarzania zadań usuwanej kolumny:", e);
+      }
   }
 }));

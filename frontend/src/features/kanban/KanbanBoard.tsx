@@ -1,13 +1,113 @@
 import React, { useEffect, useState } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { useKanbanStore } from '../../store/useKanbanStore';
+import { useKanbanStore, KanbanColumn } from '../../store/useKanbanStore';
 import { useUserStore } from '../../store/useUserStore';
 import Task from './components/Task';
 import { Plus, Trash2, X, AlertCircle, Edit2, Check, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 
+// --- KOMPONENT MODALA DO USUWANIA KOLUMNY ---
+const DeleteColumnModal = ({ column, onClose }: { column: KanbanColumn, onClose: () => void }) => {
+    const { handleColumnDeletionTasks, removeColumn, columns } = useKanbanStore();
+    const [action, setAction] = useState<'move' | 'delete'>('move');
+    const [targetColId, setTargetColId] = useState<number | ''>('');
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const availableColumns = columns.filter(c => c.id !== column.id);
+
+    useEffect(() => {
+        if (availableColumns.length === 0) {
+            setAction('delete'); // Jeśli nie ma innej kolumny, można tylko usunąć taski
+        }
+    }, [availableColumns.length]);
+
+    const confirmDelete = async () => {
+        setIsDeleting(true);
+        try {
+            await handleColumnDeletionTasks(column.id, action, targetColId === '' ? undefined : Number(targetColId));
+            await removeColumn(column.id);
+            onClose();
+        } catch (error) {
+            console.error(error);
+            alert("Wystąpił błąd podczas usuwania kolumny.");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white p-6 rounded-2xl shadow-2xl w-[400px] max-w-full animate-in fade-in zoom-in duration-200 border-t-4 border-red-500">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <Trash2 className="text-red-500" size={24} />
+                        Usuwanie kolumny
+                    </h3>
+                    <button onClick={onClose} className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+                
+                <p className="text-sm text-gray-600 mb-2">
+                    Usuwasz kolumnę: <span className="font-bold text-gray-800">{column.title}</span>.
+                </p>
+                
+                {column.items.length > 0 ? (
+                    <>
+                        <p className="text-sm text-gray-600 mb-6">Co zrobić z zadaniami ({column.items.length}), które się w niej znajdują?</p>
+                        <div className="flex flex-col gap-4 mb-8 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <label className="flex flex-col gap-3 text-sm cursor-pointer">
+                                <div className="flex items-center gap-3 group">
+                                    <input type="radio" name="action" checked={action === 'move'} onChange={() => setAction('move')} disabled={availableColumns.length === 0} className="w-4 h-4 text-purple-600 accent-purple-600" />
+                                    <span className={`transition-colors ${availableColumns.length === 0 ? 'text-gray-400' : 'group-hover:text-purple-700'}`}>
+                                        Przenieś zadania do innej kolumny
+                                    </span>
+                                </div>
+                                {action === 'move' && availableColumns.length > 0 && (
+                                    <select 
+                                        value={targetColId} 
+                                        onChange={e => setTargetColId(e.target.value as any)}
+                                        className="ml-7 p-2.5 border border-purple-200 rounded-lg outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 bg-white"
+                                    >
+                                        <option value="" disabled>-- Wybierz kolumnę docelową --</option>
+                                        {availableColumns.map(c => (
+                                            <option key={c.id} value={c.id}>{c.title}</option>
+                                        ))}
+                                    </select>
+                                )}
+                            </label>
+                            <label className="flex items-center gap-3 text-sm cursor-pointer group">
+                                <input type="radio" name="action" checked={action === 'delete'} onChange={() => setAction('delete')} className="w-4 h-4 text-red-600 accent-red-600" />
+                                <span className="text-red-600 font-medium group-hover:text-red-700 transition-colors">Usuń bezpowrotnie wszystkie zadania</span>
+                            </label>
+                        </div>
+                    </>
+                ) : (
+                    <p className="text-sm text-gray-600 mb-8">Kolumna jest pusta i zostanie bezpiecznie usunięta.</p>
+                )}
+
+                <div className="flex justify-end gap-3">
+                    <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm">
+                        Anuluj
+                    </button>
+                    <button 
+                        disabled={isDeleting || (action === 'move' && targetColId === '')} 
+                        onClick={confirmDelete} 
+                        className="px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                        {isDeleting ? 'Usuwanie...' : 'Potwierdź usunięcie'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+// --- GŁÓWNY KOMPONENT KANBAN BOARD ---
 const KanbanBoard = () => {
     const { columns, fetchBoard, addColumn, moveItem, removeColumn, addItem, updateColumn, reorderColumns } = useKanbanStore();
     const { users, fetchUsers, reorderUsers } = useUserStore();
+    
     const [isAddingColumn, setIsAddingColumn] = useState(false);
     const [newColTitle, setNewColTitle] = useState('');
     
@@ -17,6 +117,9 @@ const KanbanBoard = () => {
     const [editingColId, setEditingColId] = useState<number | null>(null);
     const [tempColTitle, setTempColTitle] = useState('');
     const [tempColLimit, setTempColLimit] = useState(0);
+
+    // Stan wywołujący Modal do usuwania kolumny
+    const [columnToDelete, setColumnToDelete] = useState<KanbanColumn | null>(null);
 
     useEffect(() => {
         fetchBoard();
@@ -42,7 +145,6 @@ const KanbanBoard = () => {
         if (!destination) return;
         if (destination.droppableId === source.droppableId && destination.index === source.index) return;
         
-        // Obsługa przeciągania całych kolumn w poziomie
         if (type === 'COLUMN') {
             const newOrderIds = Array.from(columns.map(c => c.id));
             const [removed] = newOrderIds.splice(source.index, 1);
@@ -51,13 +153,11 @@ const KanbanBoard = () => {
             return;
         }
 
-        // Obsługa przeciągania całych rzędów (użytkowników)
         if (type === 'USER_ROW') {
             reorderUsers(source.index, destination.index);
             return;
         }
         
-        // Obsługa przeciągania tasków
         if (destination.droppableId.startsWith('col-')) {
             const itemId = parseInt(draggableId.split('-')[1]);
             const destParts = destination.droppableId.split('-');
@@ -143,6 +243,7 @@ const KanbanBoard = () => {
                                      
                                      {columns.map((col, index) => {
                                          const isLimitExceeded = col.limit > 0 && col.items.length > col.limit;
+                                         const isBacklog = col.title.toLowerCase() === 'backlog';
 
                                          return (
                                          <Draggable key={`col-header-${col.id}`} draggableId={`col-header-${col.id}`} index={index}>
@@ -155,7 +256,6 @@ const KanbanBoard = () => {
                                                      ${snapshotCol.isDragging ? 'shadow-2xl ring-2 ring-purple-500 z-50 rotate-1' : ''}
                                                  `}
                                              >
-                                                 {/* Uchwyt do łapania i przesuwania kolumn */}
                                                  <div {...providedCol.dragHandleProps} className="absolute left-2 top-1/2 -translate-y-1/2 p-1 text-gray-300 hover:text-purple-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity" title="Przeciągnij kolumnę">
                                                      <GripVertical size={16} />
                                                  </div>
@@ -190,6 +290,7 @@ const KanbanBoard = () => {
                                                             <div className="flex items-center gap-2">
                                                                 <span className={`font-bold text-lg truncate ${isLimitExceeded ? 'text-red-600' : 'text-gray-800'}`} title={col.title}>
                                                                     {col.title}
+                                                                    {isBacklog && <span className="ml-2 text-xs text-purple-500 font-bold bg-purple-100 px-1.5 py-0.5 rounded-md">STAŁA</span>}
                                                                 </span>
                                                                 {isLimitExceeded && (
                                                                     <AlertCircle size={18} className="text-red-500 flex-shrink-0 animate-pulse" />
@@ -205,9 +306,13 @@ const KanbanBoard = () => {
                                                             <button onClick={() => startEditingColumn(col)} className="text-gray-400 hover:text-purple-600 p-1.5 rounded-lg hover:bg-purple-50">
                                                                 <Edit2 size={18} />
                                                             </button>
-                                                            <button onClick={() => { if(window.confirm('Usunąć kolumnę?')) removeColumn(col.id) }} className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50">
-                                                                <Trash2 size={18} />
-                                                            </button>
+                                                            
+                                                            {/* Blokada usunięcia kolumny Backlog */}
+                                                            {!isBacklog && (
+                                                                <button onClick={() => setColumnToDelete(col)} className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50">
+                                                                    <Trash2 size={18} />
+                                                                </button>
+                                                            )}
                                                         </div>
                                                      </>
                                                  )}
@@ -221,7 +326,7 @@ const KanbanBoard = () => {
                             )}
                         </Droppable>
 
-                        {/* Unassigned Row - PRZENIESIONE NA GÓRĘ, ZARAZ POD KOLUMNAMI */}
+                        {/* Unassigned Row */}
                         <div className="flex min-h-[160px] bg-gray-100/60 border-b-2 border-gray-200">
                             <div className="w-64 flex-shrink-0 p-5 border-r border-gray-200 flex flex-col justify-center sticky left-0 z-10 bg-gray-100/80 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                                 <span className="font-bold text-sm uppercase text-gray-500 flex items-center gap-2">
@@ -285,7 +390,7 @@ const KanbanBoard = () => {
                             })}
                         </div>
 
-                        {/* Obszar wspierający Drag and Drop dla wierszy */}
+                        {/* Drag and Drop dla rzędów użytkowników */}
                         <Droppable droppableId="board-users" type="USER_ROW">
                             {(providedRowList) => (
                                 <div ref={providedRowList.innerRef} {...providedRowList.droppableProps} className="flex flex-col w-full pb-10">
@@ -300,7 +405,6 @@ const KanbanBoard = () => {
                                                         ${snapshotRow.isDragging ? 'shadow-2xl relative z-40 ring-2 ring-purple-500' : 'hover:bg-purple-50/20'}
                                                     `}
                                                 >
-                                                    {/* Row Header (User) */}
                                                     <div className="w-64 flex-shrink-0 p-5 border-r border-gray-200 sticky left-0 z-10 flex flex-col justify-center bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                                                         <div className="flex items-center justify-between mb-3 opacity-0 group-hover:opacity-100 transition-opacity">
                                                             <div {...providedRow.dragHandleProps} className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-md cursor-grab active:cursor-grabbing" title="Chwyć aby przeciągnąć róg">
@@ -322,7 +426,6 @@ const KanbanBoard = () => {
                                                         </div>
                                                     </div>
 
-                                                    {/* Row Cells */}
                                                     {columns.map(col => {
                                                         const items = getItems(col.id, user.id);
                                                         const droppableId = `col-${col.id}-user-${user.id}`;
@@ -385,10 +488,14 @@ const KanbanBoard = () => {
                                 </div>
                             )}
                         </Droppable>
-
                     </div>
                 </div>
             </DragDropContext>
+
+            {/* Render Modala dla kolumn */}
+            {columnToDelete && (
+                <DeleteColumnModal column={columnToDelete} onClose={() => setColumnToDelete(null)} />
+            )}
         </div>
     );
 };
