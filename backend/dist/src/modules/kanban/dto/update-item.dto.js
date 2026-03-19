@@ -31,4 +31,10 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Number)
 ], UpdateItemDto.prototype, "order", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((object, value) => value !== null),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], UpdateItemDto.prototype, "assignedToId", void 0);
 //# sourceMappingURL=update-item.dto.js.map

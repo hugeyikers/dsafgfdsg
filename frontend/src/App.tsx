@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './layouts/DashboardLayout';
 import KanbanBoard from './features/kanban/KanbanBoard';
+import UserManagement from './pages/UserManagement';
 import Login from './pages/Login';
 
 import { useAuthStore } from './store/useAuthStore';
@@ -15,6 +16,9 @@ function App() {
         
         <Route element={isLogged ? <DashboardLayout user={user!} /> : <Navigate to="/login" />}>
           <Route path="/kanban" element={<KanbanBoard />} />
+          {user?.role === 'ADMINISTRATOR' && (
+             <Route path="/users" element={<UserManagement />} />
+          )}
           <Route path="/" element={<Navigate to="/kanban" />} />
         </Route>
         

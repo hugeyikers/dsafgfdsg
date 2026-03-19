@@ -33,6 +33,7 @@ let KanbanService = class KanbanService {
             include: {
                 items: {
                     orderBy: { order: 'asc' },
+                    include: { assignedTo: true },
                 },
             },
             orderBy: { order: 'asc' },
@@ -63,13 +64,20 @@ let KanbanService = class KanbanService {
         });
         const order = maxOrder ? maxOrder.order + 1 : 0;
         return this.prisma.kanbanItem.create({
-            data: Object.assign(Object.assign({}, dto), { order }),
+            data: {
+                content: dto.content,
+                columnId: dto.columnId,
+                assignedToId: dto.assignedToId || null,
+                order
+            },
+            include: { assignedTo: true },
         });
     }
     async updateItem(id, dto) {
         return this.prisma.kanbanItem.update({
             where: { id },
-            data: dto
+            data: dto,
+            include: { assignedTo: true }
         });
     }
     async moveBatch(itemIds, targetColumnId) {

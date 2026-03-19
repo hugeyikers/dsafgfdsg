@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { LayoutDashboard, LogOut } from 'lucide-react';
+import { LayoutDashboard, LogOut, Users } from 'lucide-react';
 
 interface User {
   fullName: string;
@@ -66,6 +66,21 @@ const DashboardLayout = ({ user }: { user: User }) => {
                 <span>Tablica Kanban</span>
               </Link>
             </li>
+            {user.role === 'ADMINISTRATOR' && (
+              <li>
+                <Link 
+                  to="/users" 
+                  className={`flex items-center gap-3 px-4 py-3 transition-colors no-underline border-[3px] font-bold rounded-2xl
+                    ${location.pathname.startsWith('/users') 
+                      ? 'bg-purple-500 text-white border-purple-500 shadow-md' 
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400 hover:bg-gray-50'}
+                  `}
+                >
+                  <Users size={20} />
+                  <span>Użytkownicy</span>
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
 

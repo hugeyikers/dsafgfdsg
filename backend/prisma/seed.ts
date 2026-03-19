@@ -33,6 +33,7 @@ async function main() {
       fullName: 'Administrator',
       role: Role.ADMINISTRATOR,
       password: hashedPass,
+      email: 'admin@canban.pl'
     },
     create: {
       email: 'admin@canban.pl',
@@ -48,6 +49,7 @@ async function main() {
       fullName: 'Użytkownik Testowy',
       role: Role.USER,
       password: userPass,
+      email: 'user@canban.pl'
     },
     create: {
       email: 'user@canban.pl',
@@ -57,7 +59,23 @@ async function main() {
     },
   });
 
-  console.log('Users seeded:', { admin_email: admin.email, user_email: user.email });
+  const dev = await prisma.user.upsert({
+    where: { email: 'dev@canban.pl' },
+    update: {
+      fullName: 'Jan Programista',
+      role: Role.USER,
+      password: userPass,
+      email: 'dev@canban.pl'
+    },
+    create: {
+      email: 'dev@canban.pl',
+      fullName: 'Jan Programista',
+      role: Role.USER,
+      password: userPass,
+    },
+  });
+
+  console.log('Users seeded:', { admin_email: admin.email, user_email: user.email, dev_email: dev.email });
 
   // Create Kanban Columns if not exist
   const columnsCount = await prisma.kanbanColumn.count();
@@ -72,8 +90,21 @@ async function main() {
         limit: 10,
         items: {
           create: [
-            { content: 'Skonfigurować projekt', order: 0 },
-            { content: 'Sprawdzić logowanie', order: 1 },
+             { 
+                 content: 'Skonfigurować projekt', 
+                 order: 0,
+                 assignedToId: admin.id 
+             },
+             { 
+                 content: 'Sprawdzić logowanie i rejestrację', 
+                 order: 1,
+                 assignedToId: user.id
+             },
+             {
+                 content: 'Obsługa błędów',
+                 order: 2,
+                 assignedToId: dev.id
+             }
           ]
         }
       }
@@ -86,20 +117,55 @@ async function main() {
         limit: 5,
         items: {
           create: [
-            { content: 'Implementacja frontendu', order: 0 },
+             { 
+                 content: 'Implementacja frontendu (Swimlanes)', 
+                 order: 0,
+                 assignedToId: dev.id
+             },
+             {
+                 content: 'Testy jednostkowe backendu',
+                 order: 1,
+                 assignedToId: admin.id
+             }
           ]
         }
+      }
+    });
+
+    const colReview = await prisma.kanbanColumn.create({
+      data: {
+          title: 'Code Review',
+          order: 2,
+          limit: 0,
+          items: {
+              create: [
+                 {
+                     content: 'Weryfikacja zmian w migracji',
+                     order: 0,
+                     assignedToId: admin.id
+                 }
+              ]
+          }
       }
     });
 
     const colDone = await prisma.kanbanColumn.create({
       data: {
         title: 'Zrobione',
-        order: 2,
+        order: 3,
         limit: 0, // No limit
         items: {
           create: [
-            { content: 'Inicjalizacja repozytorium', order: 0 },
+             { 
+                 content: 'Inicjalizacja repozytorium', 
+                 order: 0,
+                 assignedToId: admin.id
+             },
+             {
+                 content: 'Konfiguracja Docker',
+                 order: 1,
+                 assignedToId: null // Unassigned
+             }
           ]
         }
       }
