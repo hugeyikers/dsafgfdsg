@@ -3,10 +3,12 @@ import client from '../api/client';
 
 export interface KanbanItem {
   id: number;
+  title: string;
   content: string;
   order: number;
   columnId: number;
-  assignedToId?: number;
+  rowId?: number | null;
+  assignedToId?: number | null;
   assignedTo?: {
       id: number;
       fullName: string;
@@ -22,42 +24,53 @@ export interface KanbanColumn {
   items: KanbanItem[];
 }
 
+export interface KanbanRow {
+  id: number;
+  title: string;
+  order: number;
+  limit?: number;
+}
+
 interface KanbanState {
   columns: KanbanColumn[];
+  rows: KanbanRow[]; // DODANO Wiersze
   isLoading: boolean;
   selectedItems: number[]; 
   
   fetchBoard: () => Promise<void>;
+  
   addColumn: (title: string, limit?: number) => Promise<void>;
   updateColumn: (id: number, data: { title?: string, limit?: number }) => Promise<void>;
   removeColumn: (id: number) => Promise<void>;
+
+  addRow: (title: string, limit?: number) => Promise<void>;
+  updateRow: (id: number, data: { title?: string, limit?: number }) => Promise<void>;
+  removeRow: (id: number) => Promise<void>;
   
-  addItem: (columnId: number, content: string, assignedToId?: number) => Promise<void>;
-  updateItem: (itemId: number, content: string, assignedToId?: number) => Promise<void>;
+  addItem: (columnId: number, title: string, content?: string, rowId?: number | null, assignedToId?: number | null) => Promise<void>;
+  updateItem: (itemId: number, data: Partial<KanbanItem>) => Promise<void>;
   removeItem: (itemId: number) => Promise<void>;
   
-  moveItem: (itemId: number, targetColumnId: number, targetAssignedToId?: number) => Promise<void>; 
-  moveBatch: (targetColumnId: number) => Promise<void>; 
-  moveItemsBatch: (itemIds: number[], targetColumnId: number, targetAssignedToId?: number) => Promise<void>;
+  moveItem: (itemId: number, sourceColId: number, targetColId: number, targetRowId: number | null, sourceIndex: number, destIndex: number) => Promise<void>; 
   
   toggleSelection: (itemId: number) => void;
   clearSelection: () => void;
   reorderColumns: (newOrderIds: number[]) => Promise<void>;
-  
-  handleUserDeletionTasks: (sourceUserId: number, action: 'reassign' | 'unassign' | 'delete', targetUserId?: number | null) => Promise<void>;
-  handleColumnDeletionTasks: (sourceColumnId: number, action: 'move' | 'delete', targetColumnId?: number) => Promise<void>;
+  reorderRows: (newOrderIds: number[]) => Promise<void>;
 }
 
 export const useKanbanStore = create<KanbanState>((set, get) => ({
   columns: [],
+  rows: [],
   isLoading: false,
   selectedItems: [],
 
   fetchBoard: async () => {
     set({ isLoading: true });
     try {
-      const res = await client.get('/kanban/columns');
-      set({ columns: res.data });
+      // Backend zwraca teraz { columns, rows } w nowym layoucie
+      const res = await client.get('/kanban/all');
+      set({ columns: res.data.columns, rows: res.data.rows });
     } catch (e) {
       console.error(e);
     } finally {
@@ -67,7 +80,7 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
 
   addColumn: async (title, limit = 0) => {
     try {
-      await client.post('/kanban/columns', { title, limit });
+      await client.post('/kanban/columns', { title, limit: Number(limit) });
       get().fetchBoard();
     } catch (e) {
       console.error(e);
@@ -92,22 +105,45 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     }
   },
 
-  addItem: async (columnId, content, assignedToId) => {
+  addRow: async (title, limit = 0) => {
     try {
-      await client.post('/kanban/items', { columnId, content, assignedToId });
+      await client.post('/kanban/rows', { title, limit: Number(limit) });
       get().fetchBoard();
     } catch (e) {
       console.error(e);
     }
   },
 
-  updateItem: async (id, content, assignedToId) => {
+  updateRow: async (id, data) => {
+    try {
+      await client.patch(`/kanban/rows/${id}`, data);
+      get().fetchBoard();
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  removeRow: async (id) => {
+    try {
+      await client.delete(`/kanban/rows/${id}`);
+      get().fetchBoard();
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  addItem: async (columnId, title, content = '', rowId, assignedToId) => {
+    try {
+        await client.post('/kanban/items', { columnId, title, content, rowId, assignedToId });
+        get().fetchBoard();
+    } catch (e) {
+        console.error(e);
+    }
+  },
+
+  updateItem: async (id, data) => {
       try {
-          const payload: any = { content };
-          if (assignedToId !== undefined) {
-             payload.assignedToId = assignedToId;
-          }
-          await client.patch(`/kanban/items/${id}`, payload);
+          await client.patch(`/kanban/items/${id}`, data);
           get().fetchBoard();
       } catch (e) {
           console.error(e);
@@ -127,6 +163,19 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     }
   },
 
+  reorderRows: async (rowIds: number[]) => {
+    try {
+      const currentRows = get().rows;
+      const reorderedRows = rowIds.map(id => currentRows.find(r => r.id === id)!).filter(Boolean);
+      set({ rows: reorderedRows });
+
+      await client.patch('/kanban/rows/reorder', { rowIds });
+    } catch (e) {
+      console.error(e);
+      get().fetchBoard();
+    }
+  },
+
   removeItem: async (id: number) => {
     try {
       await client.delete(`/kanban/items/${id}`);
@@ -136,43 +185,65 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     }
   },
 
-  moveItem: async (itemId, targetColumnId, targetAssignedToId) => {
-      try {
-          const payload: any = { itemIds: [itemId], targetColumnId };
-          if (targetAssignedToId !== undefined) {
-              payload.targetAssignedToId = targetAssignedToId;
+  moveItem: async (itemId, sourceColId, targetColId, targetRowId, sourceIndex, destIndex) => {
+      // 1. Zapisz obecny stan, aby móc go cofnąć w razie błędu API
+      const previousColumns = get().columns;
+
+      // 2. Optymistyczna aktualizacja UI (wykonuje się natychmiast)
+      set(state => {
+          // Tworzymy płytką kopię kolumn i ich elementów
+          const newCols = state.columns.map(c => ({ ...c, items: [...c.items] }));
+          let movedItem: KanbanItem | undefined;
+
+          // Wyciągamy zadanie z oryginalnej kolumny
+          const sourceCol = newCols.find(c => c.id === sourceColId);
+          if (sourceCol) {
+              const itemIndex = sourceCol.items.findIndex(i => i.id === itemId);
+              if (itemIndex !== -1) {
+                  [movedItem] = sourceCol.items.splice(itemIndex, 1);
+              }
           }
-          
-          const patchPayload: any = { columnId: targetColumnId };
-          if (targetAssignedToId !== undefined) patchPayload.assignedToId = targetAssignedToId;
+
+          if (movedItem) {
+              // Zmieniamy przynależność zadania
+              movedItem.columnId = targetColId;
+              movedItem.rowId = targetRowId;
+
+              // Wstawiamy w odpowiednie miejsce w nowej kolumnie
+              const destCol = newCols.find(c => c.id === targetColId);
+              if (destCol) {
+                  // Filtrujemy by znaleźć rzeczywiste miejsce upuszczenia (w danej "komórce")
+                  const filteredItems = destCol.items.filter(i => 
+                      targetRowId === null ? (i.rowId === null || i.rowId === undefined) : i.rowId === targetRowId
+                  );
+                  const targetRef = filteredItems[destIndex];
+                  
+                  let insertIndex = destCol.items.length;
+                  if (targetRef) {
+                      insertIndex = destCol.items.findIndex(i => i.id === targetRef.id);
+                  } else if (destIndex === 0) {
+                      insertIndex = 0;
+                  }
+
+                  destCol.items.splice(insertIndex, 0, movedItem);
+              }
+          }
+
+          return { columns: newCols };
+      });
+
+      // 3. Request do API w tle
+      try {
+          const patchPayload: any = { columnId: targetColId };
+          if (targetRowId !== undefined) patchPayload.rowId = targetRowId;
           
           await client.patch(`/kanban/items/${itemId}`, patchPayload);
-
+          // Cichy fetch, by zsynchronizować ewentualne inne dane
           get().fetchBoard();
       } catch (e) {
-          console.error(e);
-      }
-  },
-
-  moveBatch: async (targetColumnId) => {
-      const { selectedItems } = get();
-      if (selectedItems.length === 0) return;
-      try {
-          await client.patch('/kanban/items/move-batch', { itemIds: selectedItems, targetColumnId });
-          set({ selectedItems: [] });
-          get().fetchBoard();
-      } catch (e) {
-          console.error(e);
-      }
-  },
-
-  moveItemsBatch: async (itemIds, targetColumnId) => {
-      if (itemIds.length === 0) return;
-      try {
-          await client.patch('/kanban/items/move-batch', { itemIds, targetColumnId });
-          await get().fetchBoard();
-      } catch (e) {
-          console.error(e);
+          console.error("Błąd zapisu kolejności:", e);
+          // Revert - w razie błędu cofamy klocek na stare miejsce
+          set({ columns: previousColumns });
       }
   },
 
@@ -187,43 +258,5 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
       });
   },
   
-  clearSelection: () => set({ selectedItems: [] }),
-
-  handleUserDeletionTasks: async (sourceUserId, action, targetUserId) => {
-    try {
-        const itemsToProcess = get().columns.flatMap(c => c.items).filter(i => i.assignedToId === sourceUserId);
-        
-        for (const item of itemsToProcess) {
-            if (action === 'delete') {
-                await client.delete(`/kanban/items/${item.id}`);
-            } else {
-                await client.patch(`/kanban/items/${item.id}`, { 
-                    assignedToId: action === 'unassign' ? null : targetUserId 
-                });
-            }
-        }
-        await get().fetchBoard();
-    } catch (e) {
-        console.error("Błąd podczas przetwarzania zadań usuwanego użytkownika:", e);
-    }
-  },
-
-  // NOWA METODA: przenosi lub usuwa zadania przed usunięciem kolumny
-  handleColumnDeletionTasks: async (sourceColumnId, action, targetColumnId) => {
-      try {
-          const sourceCol = get().columns.find(c => c.id === sourceColumnId);
-          if (!sourceCol) return;
-
-          for (const item of sourceCol.items) {
-              if (action === 'delete') {
-                  await client.delete(`/kanban/items/${item.id}`);
-              } else if (action === 'move' && targetColumnId !== undefined) {
-                  await client.patch(`/kanban/items/${item.id}`, { columnId: targetColumnId });
-              }
-          }
-          await get().fetchBoard();
-      } catch (e) {
-          console.error("Błąd podczas przetwarzania zadań usuwanej kolumny:", e);
-      }
-  }
+  clearSelection: () => set({ selectedItems: [] })
 }));
