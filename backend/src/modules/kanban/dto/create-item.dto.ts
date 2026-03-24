@@ -9,6 +9,11 @@ export class CreateItemDto {
   @IsInt()
   columnId: number;
 
+  @IsNumber()
+  @IsInt()
+  @IsOptional()
+  rowId?: number;
+
   @ValidateIf((object, value) => value !== null)
   @IsNumber()
   @IsInt()

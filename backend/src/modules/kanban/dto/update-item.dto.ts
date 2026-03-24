@@ -5,10 +5,18 @@ export class UpdateItemDto {
     @IsOptional()
     content?: string;
 
+    @IsString()
+    @IsOptional()
+    title?: string;
+
     @IsNumber()
     @IsInt()
     @IsOptional()
     columnId?: number;
+
+    @IsInt()
+    @IsOptional()
+    rowId?: number;
 
     @IsNumber()
     @IsInt()

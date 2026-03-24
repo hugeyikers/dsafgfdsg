@@ -1,9 +1,11 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateColumnDto } from './dto/create-column.dto';
+import { CreateRowDto } from './dto/create-row.dto';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { UpdateColumnDto } from './dto/update-column.dto';
+import { UpdateRowDto } from './dto/update-row.dto';
 
 @Injectable()
 export class KanbanService implements OnModuleInit {
@@ -24,7 +26,7 @@ export class KanbanService implements OnModuleInit {
   }
 
   async findAll() {
-    return this.prisma.kanbanColumn.findMany({
+    const columns = await this.prisma.kanbanColumn.findMany({
       include: {
         items: {
           orderBy: { order: 'asc' },
@@ -33,6 +35,12 @@ export class KanbanService implements OnModuleInit {
       },
       orderBy: { order: 'asc' },
     });
+
+    const rows = await this.prisma.kanbanRow.findMany({
+      orderBy: { order: 'asc' },
+    });
+
+    return { columns, rows };
   }
 
   async createColumn(dto: CreateColumnDto) {
@@ -56,6 +64,27 @@ export class KanbanService implements OnModuleInit {
     return this.prisma.kanbanColumn.delete({ where: { id } });
   }
 
+ async createRow(dto: CreateRowDto) {
+    const maxOrder = await this.prisma.kanbanRow.findFirst({ orderBy: { order: 'desc' } });
+    const order = maxOrder ? maxOrder.order + 1 : 0;
+    return this.prisma.kanbanRow.create({
+      data: { ...dto, order },
+      include: { items: true },
+    });
+  }
+
+  async updateRow(id: number, dto: UpdateRowDto) {
+    return this.prisma.kanbanRow.update({
+      where: { id },
+      data: dto,
+      include: { items: true },
+    });
+  }
+
+  async removeRow(id: number) {
+    return this.prisma.kanbanRow.delete({ where: { id } });
+  }
+
   async createItem(dto: CreateItemDto) {
     const maxOrder = await this.prisma.kanbanItem.findFirst({
         where: { columnId: dto.columnId },
@@ -65,8 +94,10 @@ export class KanbanService implements OnModuleInit {
 
     return this.prisma.kanbanItem.create({
       data: { 
+        title: dto.content,
         content: dto.content,
         columnId: dto.columnId,
+        rowId: dto.rowId || null,
         assignedToId: dto.assignedToId || null,
         order
       },
@@ -112,6 +143,16 @@ export class KanbanService implements OnModuleInit {
   async reorderColumns(columnIds: number[]) {
     const updates = columnIds.map((id, index) => 
       this.prisma.kanbanColumn.update({
+        where: { id },
+        data: { order: index },
+      })
+    );
+    return await this.prisma.$transaction(updates);
+  }
+
+  async reorderRows(rowIds: number[]) {
+    const updates = rowIds.map((id, index) => 
+      this.prisma.kanbanRow.update({
         where: { id },
         data: { order: index },
       })
