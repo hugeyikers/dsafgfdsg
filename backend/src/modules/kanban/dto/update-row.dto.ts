@@ -13,5 +13,9 @@ export class UpdateRowDto {
     @IsInt()
     @IsOptional()
     order?: number;
+
+    @IsString()
+    @IsOptional()
+    color?: string;
   }
   

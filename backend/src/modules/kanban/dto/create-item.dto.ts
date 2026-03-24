@@ -3,6 +3,10 @@ import { IsInt, IsNotEmpty, IsNumber, IsString, IsOptional, ValidateIf } from 'c
 export class CreateItemDto {
   @IsString()
   @IsNotEmpty()
+  title: string;
+
+  @IsString()
+  @IsNotEmpty()
   content: string;
 
   @IsNumber()
@@ -19,4 +23,8 @@ export class CreateItemDto {
   @IsInt()
   @IsOptional()
   assignedToId?: number | null;
+
+  @IsString()
+  @IsOptional()
+  color?: string;
 }

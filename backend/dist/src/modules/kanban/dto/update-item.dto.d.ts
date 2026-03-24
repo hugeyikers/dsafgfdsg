@@ -5,4 +5,5 @@ export declare class UpdateItemDto {
     rowId?: number;
     order?: number;
     assignedToId?: number | null;
+    color?: string;
 }

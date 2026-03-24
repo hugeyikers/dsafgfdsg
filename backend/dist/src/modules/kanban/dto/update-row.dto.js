@@ -30,4 +30,9 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Number)
 ], UpdateRowDto.prototype, "order", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], UpdateRowDto.prototype, "color", void 0);
 //# sourceMappingURL=update-row.dto.js.map

@@ -8,4 +8,8 @@ export class CreateColumnDto {
   @IsNumber()
   @IsOptional()
   limit?: number;
+
+  @IsString()
+  @IsOptional()
+  color?: string;
 }

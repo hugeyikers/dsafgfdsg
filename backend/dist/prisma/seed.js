@@ -86,13 +86,15 @@ async function main() {
             fullName: 'Jan Programista',
             role: client_1.Role.USER,
             password: userPass,
-            email: 'dev@canban.pl'
+            email: 'dev@canban.pl',
+            limit: 5
         },
         create: {
             email: 'dev@canban.pl',
             fullName: 'Jan Programista',
             role: client_1.Role.USER,
             password: userPass,
+            limit: 5
         },
     });
     console.log('Users seeded:', { admin_email: admin.email, user_email: user.email, dev_email: dev.email });

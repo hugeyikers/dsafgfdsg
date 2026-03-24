@@ -47,4 +47,9 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Number)
 ], UpdateItemDto.prototype, "assignedToId", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], UpdateItemDto.prototype, "color", void 0);
 //# sourceMappingURL=update-item.dto.js.map

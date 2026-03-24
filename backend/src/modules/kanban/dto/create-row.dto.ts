@@ -8,4 +8,8 @@ export class CreateRowDto {
   @IsNumber()
   @IsOptional()
   limit?: number;
+
+  @IsString()
+  @IsOptional()
+  color?: string;
 }

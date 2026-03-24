@@ -13,5 +13,9 @@ export class UpdateColumnDto {
     @IsInt()
     @IsOptional()
     order?: number;
+
+    @IsString()
+    @IsOptional()
+    color?: string;
   }
   

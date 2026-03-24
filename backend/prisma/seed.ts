@@ -65,13 +65,15 @@ async function main() {
       fullName: 'Jan Programista',
       role: Role.USER,
       password: userPass,
-      email: 'dev@canban.pl'
+      email: 'dev@canban.pl',
+      limit: 5
     },
     create: {
       email: 'dev@canban.pl',
       fullName: 'Jan Programista',
       role: Role.USER,
       password: userPass,
+      limit: 5
     },
   });
 

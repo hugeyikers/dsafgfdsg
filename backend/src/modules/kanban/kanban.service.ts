@@ -99,7 +99,8 @@ export class KanbanService implements OnModuleInit {
         columnId: dto.columnId,
         rowId: dto.rowId || null,
         assignedToId: dto.assignedToId || null,
-        order
+        order,
+        color: dto.color || null
       },
       include: { assignedTo: true },
     });

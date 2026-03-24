@@ -14,213 +14,235 @@ export declare class KanbanService implements OnModuleInit {
         columns: ({
             items: ({
                 assignedTo: {
+                    password: string;
                     id: number;
-                    createdAt: Date;
                     email: string;
                     fullName: string;
                     role: import(".prisma/client").$Enums.Role;
-                    password: string;
+                    createdAt: Date;
+                    limit: number | null;
                 };
             } & {
                 id: number;
+                createdAt: Date;
                 title: string;
                 order: number;
-                createdAt: Date;
                 updatedAt: Date;
+                color: string | null;
                 content: string;
-                columnId: number;
                 rowId: number | null;
                 assignedToId: number | null;
+                columnId: number;
             })[];
         } & {
             id: number;
+            createdAt: Date;
+            limit: number;
             title: string;
             order: number;
-            limit: number;
-            createdAt: Date;
             updatedAt: Date;
+            color: string | null;
         })[];
         rows: {
             id: number;
+            createdAt: Date;
+            limit: number;
             title: string;
             order: number;
-            limit: number;
-            createdAt: Date;
             updatedAt: Date;
+            color: string | null;
         }[];
     }>;
     createColumn(dto: CreateColumnDto): Promise<{
         items: {
             id: number;
+            createdAt: Date;
             title: string;
             order: number;
-            createdAt: Date;
             updatedAt: Date;
+            color: string | null;
             content: string;
-            columnId: number;
             rowId: number | null;
             assignedToId: number | null;
+            columnId: number;
         }[];
     } & {
         id: number;
+        createdAt: Date;
+        limit: number;
         title: string;
         order: number;
-        limit: number;
-        createdAt: Date;
         updatedAt: Date;
+        color: string | null;
     }>;
     updateColumn(id: number, dto: UpdateColumnDto): Promise<{
         items: {
             id: number;
+            createdAt: Date;
             title: string;
             order: number;
-            createdAt: Date;
             updatedAt: Date;
+            color: string | null;
             content: string;
-            columnId: number;
             rowId: number | null;
             assignedToId: number | null;
+            columnId: number;
         }[];
     } & {
         id: number;
+        createdAt: Date;
+        limit: number;
         title: string;
         order: number;
-        limit: number;
-        createdAt: Date;
         updatedAt: Date;
+        color: string | null;
     }>;
     removeColumn(id: number): Promise<{
         id: number;
+        createdAt: Date;
+        limit: number;
         title: string;
         order: number;
-        limit: number;
-        createdAt: Date;
         updatedAt: Date;
+        color: string | null;
     }>;
     createRow(dto: CreateRowDto): Promise<{
         items: {
             id: number;
+            createdAt: Date;
             title: string;
             order: number;
-            createdAt: Date;
             updatedAt: Date;
+            color: string | null;
             content: string;
-            columnId: number;
             rowId: number | null;
             assignedToId: number | null;
+            columnId: number;
         }[];
     } & {
         id: number;
+        createdAt: Date;
+        limit: number;
         title: string;
         order: number;
-        limit: number;
-        createdAt: Date;
         updatedAt: Date;
+        color: string | null;
     }>;
     updateRow(id: number, dto: UpdateRowDto): Promise<{
         items: {
             id: number;
+            createdAt: Date;
             title: string;
             order: number;
-            createdAt: Date;
             updatedAt: Date;
+            color: string | null;
             content: string;
-            columnId: number;
             rowId: number | null;
             assignedToId: number | null;
+            columnId: number;
         }[];
     } & {
         id: number;
+        createdAt: Date;
+        limit: number;
         title: string;
         order: number;
-        limit: number;
-        createdAt: Date;
         updatedAt: Date;
+        color: string | null;
     }>;
     removeRow(id: number): Promise<{
         id: number;
+        createdAt: Date;
+        limit: number;
         title: string;
         order: number;
-        limit: number;
-        createdAt: Date;
         updatedAt: Date;
+        color: string | null;
     }>;
     createItem(dto: CreateItemDto): Promise<{
         assignedTo: {
+            password: string;
             id: number;
-            createdAt: Date;
             email: string;
             fullName: string;
             role: import(".prisma/client").$Enums.Role;
-            password: string;
+            createdAt: Date;
+            limit: number | null;
         };
     } & {
         id: number;
+        createdAt: Date;
         title: string;
         order: number;
-        createdAt: Date;
         updatedAt: Date;
+        color: string | null;
         content: string;
-        columnId: number;
         rowId: number | null;
         assignedToId: number | null;
+        columnId: number;
     }>;
     updateItem(id: number, dto: UpdateItemDto): Promise<{
         assignedTo: {
+            password: string;
             id: number;
-            createdAt: Date;
             email: string;
             fullName: string;
             role: import(".prisma/client").$Enums.Role;
-            password: string;
+            createdAt: Date;
+            limit: number | null;
         };
     } & {
         id: number;
+        createdAt: Date;
         title: string;
         order: number;
-        createdAt: Date;
         updatedAt: Date;
+        color: string | null;
         content: string;
-        columnId: number;
         rowId: number | null;
         assignedToId: number | null;
+        columnId: number;
     }>;
     moveBatch(itemIds: number[], targetColumnId: number): Promise<{
         id: number;
+        createdAt: Date;
         title: string;
         order: number;
-        createdAt: Date;
         updatedAt: Date;
+        color: string | null;
         content: string;
-        columnId: number;
         rowId: number | null;
         assignedToId: number | null;
+        columnId: number;
     }[]>;
     removeItem(id: number): Promise<{
         id: number;
+        createdAt: Date;
         title: string;
         order: number;
-        createdAt: Date;
         updatedAt: Date;
+        color: string | null;
         content: string;
-        columnId: number;
         rowId: number | null;
         assignedToId: number | null;
+        columnId: number;
     }>;
     reorderColumns(columnIds: number[]): Promise<{
         id: number;
+        createdAt: Date;
+        limit: number;
         title: string;
         order: number;
-        limit: number;
-        createdAt: Date;
         updatedAt: Date;
+        color: string | null;
     }[]>;
     reorderRows(rowIds: number[]): Promise<{
         id: number;
+        createdAt: Date;
+        limit: number;
         title: string;
         order: number;
-        limit: number;
-        createdAt: Date;
         updatedAt: Date;
+        color: string | null;
     }[]>;
 }

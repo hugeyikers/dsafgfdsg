@@ -27,5 +27,9 @@ export class UpdateItemDto {
     @IsInt()
     @IsOptional()
     assignedToId?: number | null;
+
+    @IsString()
+    @IsOptional()
+    color?: string;
   }
   
