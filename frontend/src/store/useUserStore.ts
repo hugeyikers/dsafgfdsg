@@ -20,7 +20,10 @@ interface UserState {
   updateUserRole: (id: number, role: 'ADMINISTRATOR' | 'USER') => Promise<void>;
   updateUserPassword: (id: number, password: string) => Promise<void>;
   deleteUser: (id: number) => Promise<void>;
+<<<<<<< HEAD
   setMaxTasksPerUser: (limit: number) => void;
+=======
+>>>>>>> 3fbcbef (adding working drag and drop)
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
