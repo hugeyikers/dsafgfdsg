@@ -14,6 +14,7 @@ const UserManagement = () => {
   const [showPassword, setShowPassword] = useState(false);
   
   const [newUser, setNewUser] = useState({ fullName: '', email: '', password: '', role: 'USER' as const });
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchUsers();

@@ -3,7 +3,6 @@ import client from '../api/client';
 
 export interface KanbanItem {
   id: number;
-  title: string;
   content: string;
   order: number;
   columnId: number;
