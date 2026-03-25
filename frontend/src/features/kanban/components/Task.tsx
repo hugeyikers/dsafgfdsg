@@ -1,9 +1,9 @@
 // frontend/src/features/kanban/components/Task.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-import { Edit2, X, User, AlignLeft } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CornerDownRight, User, Palette } from 'lucide-react';
 import { useKanbanStore, KanbanItem } from '../../../store/useKanbanStore';
-import { useUserStore } from '../../../store/useUserStore';
+import TaskDetailsModal from './TaskDetailsModal';
 
 interface TaskProps {
     item: KanbanItem;
@@ -11,135 +11,123 @@ interface TaskProps {
 }
 
 const Task: React.FC<TaskProps> = ({ item, index }) => {
-    const { updateItem, removeItem } = useKanbanStore();
-    const { users } = useUserStore();
+    // Pobieramy dane z Twojego useKanbanStore
+    const { columns, moveItem } = useKanbanStore();
     
-    const [isEditing, setIsEditing] = useState(false);
-    const [tempTitle, setTempTitle] = useState(item.title);
-    const [tempContent, setTempContent] = useState(item.content || '');
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    // Stan do otwierania modalu szczegółów (?)
+    const [showDetails, setShowDetails] = useState(false);
 
-    useEffect(() => {
-        if (isEditing && textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    // --- LOGIKA STRZAŁEK SZYBKIEGO PRZENOSZENIA ZADANIA (Zgodnie ze szkicem) ---
+    const handleQuickMove = async (e: React.MouseEvent, direction: 'left' | 'right') => {
+        e.stopPropagation(); // Ważne: Nie odpalamy kliknięcia na karcie!
+
+        // 1. Znajdujemy obecną kolumnę
+        const currentColumn = columns.find(c => c.id === item.columnId);
+        if (!currentColumn) return;
+
+        // 2. Znajdujemy jej indeks w posortowanej tablicy kolumn
+        // (Zakładamy, że columns w store są już posortowane po 'order')
+        const currentColumnIndex = columns.findIndex(c => c.id === currentColumn.id);
+        if (currentColumnIndex === -1) return;
+
+        // 3. Obliczamy ID docelowej kolumny
+        let targetColumnId: number;
+        if (direction === 'left') {
+            if (currentColumnIndex === 0) return; // Jesteśmy w pierwszej kolumnie
+            targetColumnId = columns[currentColumnIndex - 1].id;
+        } else {
+            if (currentColumnIndex === columns.length - 1) return; // Jesteśmy w ostatniej
+            targetColumnId = columns[currentColumnIndex + 1].id;
         }
-    }, [isEditing, tempContent]);
 
-    const handleSave = async (e?: React.MouseEvent) => {
-        e?.stopPropagation();
-        const finalTitle = tempTitle.trim();
+        // 4. Uruchamiamy moveItem (Używam Twojej logiki moveItem - targetRowId zostaje null)
+        await moveItem(item.id, item.columnId, targetColumnId, item.rowId || null, index, 0); 
+    };
+
+    // --- LOGIKA GENEROWANIA INICJAŁÓW UŻYTKOWNIKA (Zgodnie ze szkicem: MK) ---
+    const getUserInitials = (fullName?: string) => {
+        if (!fullName || fullName.trim() === '') return '?';
+        const parts = fullName.trim().split(/\s+/); // Rozbijamy po białych znakach
+        if (parts.length === 1) return fullName.charAt(0).toUpperCase();
         
-        // Zapisujemy tylko jeśli cokolwiek się zmieniło
-        if (finalTitle && (finalTitle !== item.title || tempContent !== (item.content || ''))) {
-            await updateItem(item.id, { title: finalTitle, content: tempContent }); 
-        } else if (!finalTitle) {
-             setTempTitle(item.title);
-             setTempContent(item.content || '');
-        }
-        setIsEditing(false);
-    };
-
-    const handleCancel = (e?: React.MouseEvent) => {
-        e?.stopPropagation();
-        setTempTitle(item.title);
-        setTempContent(item.content || '');
-        setIsEditing(false);
-    };
-
-    const handleDelete = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (window.confirm('Usunąć zadanie?')) {
-            removeItem(item.id);
-        }
-    };
-
-    const handleUserAssign = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const val = e.target.value;
-        const newUserId = val ? parseInt(val) : null;
-        await updateItem(item.id, { assignedToId: newUserId });
+        // Bierzemy pierwszą literę imienia i pierwszą nazwiska
+        return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
     };
 
     return (
-        <Draggable draggableId={`item-${item.id}`} index={index} isDragDisabled={isEditing}>
-            {(provided, snapshot) => (
-                <div
-                    ref={provided.innerRef}
-                    {...provided.draggableProps}
-                    {...provided.dragHandleProps}
-                    className={`w-full p-3 rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all group relative flex flex-col gap-2 ${
-                        snapshot.isDragging ? 'shadow-xl ring-2 ring-purple-500 z-50 cursor-grabbing rotate-2' : 'cursor-grab'
-                    }`}
-                >
-                    {isEditing ? (
-                        <div className="flex flex-col gap-2">
-                            <input 
-                                autoFocus
-                                className="w-full font-bold bg-gray-50 border border-purple-200 rounded p-2 outline-none text-sm focus:ring-1 focus:ring-purple-500 text-gray-800"
-                                value={tempTitle}
-                                onChange={(e) => setTempTitle(e.target.value)}
-                                placeholder="Tytuł zadania..."
-                                onClick={(e) => e.stopPropagation()}
-                            />
-                            <textarea 
-                                ref={textareaRef}
-                                rows={2}
-                                placeholder="Dodaj dokładniejszy opis..."
-                                className="w-full bg-gray-50 border border-purple-200 rounded p-2 outline-none resize-none text-xs focus:ring-1 focus:ring-purple-500 text-gray-600"
-                                value={tempContent}
-                                onChange={(e) => setTempContent(e.target.value)}
-                                onClick={(e) => e.stopPropagation()}
-                            />
-                            <div className="flex justify-end gap-2 mt-1">
-                                <button onClick={handleCancel} className="p-1 text-gray-400 hover:text-gray-600 rounded bg-gray-100 hover:bg-gray-200"><X size={14} /></button>
-                                <button onClick={handleSave} className="px-3 py-1 bg-purple-600 text-white rounded text-xs font-bold hover:bg-purple-700">Zapisz</button>
+        <>
+            <Draggable draggableId={`item-${item.id}`} index={index} isDragDisabled={showDetails}>
+                {(provided, snapshot) => (
+                    <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        className={`w-full p-4 pr-11 rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all group relative flex flex-col gap-1 cursor-grab ${
+                            snapshot.isDragging ? 'shadow-xl ring-2 ring-purple-500 z-50 rotate-2' : ''
+                        }`}
+                        // Kliknięcie w dowolne miejsce karty otwiera szczegóły (?)
+                        onClick={() => setShowDetails(true)} 
+                    >
+                        
+                        {/* 1. TYTUŁ (Czysty, estetyczny - plik "MK" w rogu) */}
+                        <div className="flex items-start justify-between gap-3">
+                            <span className="font-bold text-gray-900 text-sm leading-snug break-words">
+                                {item.title}
+                            </span>
+                            
+                            {/* PRZYPISANY UŻYTKOWNIK (Avatar ze szkicu: "MK") */}
+                            <div className="absolute top-2.5 right-2.5 flex items-center justify-center flex-shrink-0 w-7 h-7 rounded-full bg-purple-100 text-purple-700 font-bold text-xs border border-purple-200 shadow-inner"
+                                 title={item.assignedTo?.fullName || 'Nieprzypisane'}>
+                                {getUserInitials(item.assignedTo?.fullName)}
                             </div>
                         </div>
-                    ) : (
-                        <div className="flex flex-col gap-2">
-                            <div className="flex justify-between items-start gap-2">
-                                <div className="flex-1 flex flex-col gap-1">
-                                    <span className="font-bold text-gray-800 text-sm leading-snug break-words">
-                                        {item.title}
-                                    </span>
-                                    
-                                    {/* Subtelny podgląd opisu, jeśli istnieje */}
-                                    {item.content && (
-                                        <div className="flex items-start gap-1 text-gray-500 mt-1">
-                                            <AlignLeft size={12} className="mt-[2px] shrink-0" />
-                                            <span className="text-xs line-clamp-2 break-words leading-relaxed" title={item.content}>
-                                                {item.content}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                    <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); }} className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-purple-600"><Edit2 size={12} /></button>
-                                    <button onClick={handleDelete} className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-500"><X size={12} /></button>
-                                </div>
-                            </div>
 
-                            <div className="flex items-center gap-2 mt-1 pt-2 border-t border-gray-100">
-                                <User size={14} className="text-gray-400 shrink-0" />
-                                <select 
-                                    className="text-xs bg-transparent border-none text-gray-500 cursor-pointer outline-none hover:text-purple-600 transition-colors flex-1"
-                                    value={item.assignedToId || ''}
-                                    onChange={handleUserAssign}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                >
-                                    <option value="">Nieprzypisane</option>
-                                    {users.map(u => (
-                                        <option key={u.id} value={u.id}>{u.fullName}</option>
-                                    ))}
-                                </select>
-                            </div>
+                        {/* 2. SUBTELNY PODGLĄD OPISU (Jeśli istnieje) */}
+                        {item.content && (
+                            <p className="text-xs text-gray-500 line-clamp-2 break-words leading-relaxed mt-1" title={item.content}>
+                                {item.content}
+                            </p>
+                        )}
+
+                        {/* 3. PASEK AKCJI (Zgodnie ze szkicem: <-  ?  ->) */}
+                        <div className="flex justify-between items-center gap-2 mt-3.5 pt-2 border-t border-slate-100 text-slate-400 opacity-50 group-hover:opacity-100 transition-opacity">
+                            
+                            {/* Strzałka w LEWO (<-) */}
+                            <button 
+                                onClick={(e) => handleQuickMove(e, 'left')} 
+                                className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                                title="Szybko przenieś w lewo"
+                            >
+                                <ArrowLeft size={16} />
+                            </button>
+
+                            {/* Szczegóły (?) */}
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setShowDetails(true); }}
+                                className="mx-auto text-xl font-medium text-gray-400 hover:text-purple-600 transition-colors"
+                                title="Zobacz szczegóły zadania"
+                            >
+                                ?
+                            </button>
+
+                            {/* Strzałka w PRAWO (->) */}
+                            <button 
+                                onClick={(e) => handleQuickMove(e, 'right')} 
+                                className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                                title="Szybko przenieś w prawo"
+                            >
+                                <ArrowRight size={16} />
+                            </button>
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
+            </Draggable>
+
+            {/* MODAL SZCZEGÓŁÓW ZADANIA (?) */}
+            {showDetails && (
+                <TaskDetailsModal item={item} onClose={() => setShowDetails(false)} />
             )}
-        </Draggable>
+        </>
     );
 };
 
