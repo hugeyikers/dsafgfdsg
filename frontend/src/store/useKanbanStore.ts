@@ -3,12 +3,15 @@ import client from '../api/client';
 
 export interface KanbanItem {
   id: number;
-  title: string;
   content: string;
   order: number;
   columnId: number;
-  rowId?: number | null;
+  rowId: number | null;
   assignedToId?: number | null;
+  color?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  title?: string;
   assignedTo?: {
       id: number;
       fullName: string;
@@ -21,56 +24,52 @@ export interface KanbanColumn {
   title: string;
   order: number;
   limit: number;
+  color?: string;
   items: KanbanItem[];
 }
 
 export interface KanbanRow {
-  id: number;
-  title: string;
-  order: number;
-  limit?: number;
+    id: number;
+    title: string;
+    order: number;
+    color?: string;
 }
 
 interface KanbanState {
   columns: KanbanColumn[];
-  rows: KanbanRow[]; // DODANO Wiersze
+  rows: KanbanRow[];
   isLoading: boolean;
-  selectedItems: number[]; 
   
   fetchBoard: () => Promise<void>;
   
-  addColumn: (title: string, limit?: number) => Promise<void>;
-  updateColumn: (id: number, data: { title?: string, limit?: number }) => Promise<void>;
-  removeColumn: (id: number) => Promise<void>;
-
-  addRow: (title: string, limit?: number) => Promise<void>;
-  updateRow: (id: number, data: { title?: string, limit?: number }) => Promise<void>;
-  removeRow: (id: number) => Promise<void>;
+  addColumn: (title: string, color?: string) => Promise<void>;
+  updateColumn: (id: number, data: { title?: string, color?: string }) => Promise<void>;
+  removeColumn: (id: number, action?: 'delete_tasks' | 'move_tasks', targetColId?: number) => Promise<void>;
   
-  addItem: (columnId: number, title: string, content?: string, rowId?: number | null, assignedToId?: number | null) => Promise<void>;
+  addRow: (title: string, color?: string) => Promise<void>;
+  updateRow: (id: number, data: { title?: string, color?: string }) => Promise<void>;
+  removeRow: (id: number, action?: 'delete_tasks' | 'move_tasks', targetRowId?: number) => Promise<void>;
+
+  addItem: (columnId: number, rowId: number | null, title: string, content: string) => Promise<void>;
   updateItem: (itemId: number, data: Partial<KanbanItem>) => Promise<void>;
   removeItem: (itemId: number) => Promise<void>;
   
-  moveItem: (itemId: number, sourceColId: number, targetColId: number, targetRowId: number | null, sourceIndex: number, destIndex: number) => Promise<void>; 
-  
-  toggleSelection: (itemId: number) => void;
-  clearSelection: () => void;
-  reorderColumns: (newOrderIds: number[]) => Promise<void>;
-  reorderRows: (newOrderIds: number[]) => Promise<void>;
+  moveItem: (itemId: number, targetColumnId: number, targetRowId: number | null) => Promise<void>; 
 }
 
 export const useKanbanStore = create<KanbanState>((set, get) => ({
   columns: [],
   rows: [],
   isLoading: false,
-  selectedItems: [],
 
   fetchBoard: async () => {
     set({ isLoading: true });
     try {
-      // Backend zwraca teraz { columns, rows } w nowym layoucie
       const res = await client.get('/kanban/all');
-      set({ columns: res.data.columns, rows: res.data.rows });
+      set({ 
+          columns: res.data.columns || [], 
+          rows: res.data.rows || [] 
+      });
     } catch (e) {
       console.error(e);
     } finally {
@@ -78,185 +77,68 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     }
   },
 
-  addColumn: async (title, limit = 0) => {
-    try {
-      await client.post('/kanban/columns', { title, limit: Number(limit) });
-      get().fetchBoard();
-    } catch (e) {
-      console.error(e);
-    }
-  },
+  addColumn: async (title, color) => { try { await client.post('/kanban/columns', { title, color }); get().fetchBoard(); } catch (e) { console.error(e); } },
+  updateColumn: async (id, data) => { try { await client.patch(`/kanban/columns/${id}`, data); get().fetchBoard(); } catch (e) { console.error(e); } },
+  removeColumn: async (id, action, targetColId) => { try { await client.delete(`/kanban/columns/${id}`, { data: { action, targetColId } }); get().fetchBoard(); } catch (e) { console.error(e); } },
 
-  updateColumn: async (id, data) => {
-    try {
-      await client.patch(`/kanban/columns/${id}`, data);
-      get().fetchBoard();
-    } catch (e) {
-      console.error(e);
-    }
-  },
+  addRow: async (title, color) => { try { await client.post('/kanban/rows', { title, color }); get().fetchBoard(); } catch (e) { console.error(e); } },
+  updateRow: async (id, data) => { try { await client.patch(`/kanban/rows/${id}`, data); get().fetchBoard(); } catch (e) { console.error(e); } },
+  removeRow: async (id, action, targetRowId) => { try { await client.delete(`/kanban/rows/${id}`, { data: { action, targetRowId } }); get().fetchBoard(); } catch (e) { console.error(e); } },
 
-  removeColumn: async (id) => {
-    try {
-      await client.delete(`/kanban/columns/${id}`);
-      get().fetchBoard();
-    } catch (e) {
-      console.error(e);
-    }
-  },
-
-  addRow: async (title, limit = 0) => {
-    try {
-      await client.post('/kanban/rows', { title, limit: Number(limit) });
-      get().fetchBoard();
-    } catch (e) {
-      console.error(e);
-    }
-  },
-
-  updateRow: async (id, data) => {
-    try {
-      await client.patch(`/kanban/rows/${id}`, data);
-      get().fetchBoard();
-    } catch (e) {
-      console.error(e);
-    }
-  },
-
-  removeRow: async (id) => {
-    try {
-      await client.delete(`/kanban/rows/${id}`);
-      get().fetchBoard();
-    } catch (e) {
-      console.error(e);
-    }
-  },
-
-  addItem: async (columnId, title, content = '', rowId, assignedToId) => {
-    try {
-        await client.post('/kanban/items', { columnId, title, content, rowId, assignedToId });
-        get().fetchBoard();
-    } catch (e) {
-        console.error(e);
-    }
+  addItem: async (columnId, rowId, title, content) => {
+    try { 
+        await client.post('/kanban/items', { columnId, rowId, title, content }); 
+        get().fetchBoard(); 
+    } catch (e) { console.error(e); }
   },
 
   updateItem: async (id, data) => {
-      try {
-          await client.patch(`/kanban/items/${id}`, data);
-          get().fetchBoard();
-      } catch (e) {
-          console.error(e);
-      }
-  },
-
-  reorderColumns: async (columnIds: number[]) => {
-    try {
-      const currentColumns = get().columns;
-      const reorderedColumns = columnIds.map(id => currentColumns.find(c => c.id === id)!).filter(Boolean);
-      set({ columns: reorderedColumns });
-
-      await client.patch('/kanban/columns/reorder', { columnIds });
-    } catch (e) {
-      console.error(e);
-      get().fetchBoard();
-    }
-  },
-
-  reorderRows: async (rowIds: number[]) => {
-    try {
-      const currentRows = get().rows;
-      const reorderedRows = rowIds.map(id => currentRows.find(r => r.id === id)!).filter(Boolean);
-      set({ rows: reorderedRows });
-
-      await client.patch('/kanban/rows/reorder', { rowIds });
-    } catch (e) {
-      console.error(e);
-      get().fetchBoard();
-    }
+      try { await client.patch(`/kanban/items/${id}`, data); get().fetchBoard(); } catch (e) { console.error(e); }
   },
 
   removeItem: async (id: number) => {
-    try {
-      await client.delete(`/kanban/items/${id}`);
-      get().fetchBoard();
-    } catch (e) {
-      console.error(e);
-    }
+    try { await client.delete(`/kanban/items/${id}`); get().fetchBoard(); } catch (e) { console.error(e); }
   },
 
-  moveItem: async (itemId, sourceColId, targetColId, targetRowId, sourceIndex, destIndex) => {
-      // 1. Zapisz obecny stan, aby móc go cofnąć w razie błędu API
-      const previousColumns = get().columns;
-
-      // 2. Optymistyczna aktualizacja UI (wykonuje się natychmiast)
+  moveItem: async (itemId, targetColumnId, targetRowId) => {
+      // 1. KULOODPORNY OPTYMISTYCZNY UPDATE (Głęboka kopia)
       set(state => {
-          // Tworzymy płytką kopię kolumn i ich elementów
-          const newCols = state.columns.map(c => ({ ...c, items: [...c.items] }));
-          let movedItem: KanbanItem | undefined;
+          const newColumns = JSON.parse(JSON.stringify(state.columns));
+          let movedItem = null;
 
-          // Wyciągamy zadanie z oryginalnej kolumny
-          const sourceCol = newCols.find(c => c.id === sourceColId);
-          if (sourceCol) {
-              const itemIndex = sourceCol.items.findIndex(i => i.id === itemId);
+          // Szukamy i wycinamy taska ze starego miejsca
+          for (const col of newColumns) {
+              const itemIndex = col.items.findIndex((i: any) => i.id === itemId);
               if (itemIndex !== -1) {
-                  [movedItem] = sourceCol.items.splice(itemIndex, 1);
+                  movedItem = col.items.splice(itemIndex, 1)[0];
+                  break;
               }
           }
 
+          // Aktualizujemy dane taska i wrzucamy do nowej kolumny
           if (movedItem) {
-              // Zmieniamy przynależność zadania
-              movedItem.columnId = targetColId;
+              movedItem.columnId = targetColumnId;
               movedItem.rowId = targetRowId;
-
-              // Wstawiamy w odpowiednie miejsce w nowej kolumnie
-              const destCol = newCols.find(c => c.id === targetColId);
-              if (destCol) {
-                  // Filtrujemy by znaleźć rzeczywiste miejsce upuszczenia (w danej "komórce")
-                  const filteredItems = destCol.items.filter(i => 
-                      targetRowId === null ? (i.rowId === null || i.rowId === undefined) : i.rowId === targetRowId
-                  );
-                  const targetRef = filteredItems[destIndex];
-                  
-                  let insertIndex = destCol.items.length;
-                  if (targetRef) {
-                      insertIndex = destCol.items.findIndex(i => i.id === targetRef.id);
-                  } else if (destIndex === 0) {
-                      insertIndex = 0;
-                  }
-
-                  destCol.items.splice(insertIndex, 0, movedItem);
+              
+              const targetCol = newColumns.find((c: any) => c.id === targetColumnId);
+              if (targetCol) {
+                  targetCol.items.push(movedItem);
               }
           }
 
-          return { columns: newCols };
+          return { columns: newColumns };
       });
 
-      // 3. Request do API w tle
+      // 2. WYSYŁKA DO NEST.JS I WYŁAPANIE BŁĘDU
       try {
-          const patchPayload: any = { columnId: targetColId };
-          if (targetRowId !== undefined) patchPayload.rowId = targetRowId;
-          
-          await client.patch(`/kanban/items/${itemId}`, patchPayload);
-          // Cichy fetch, by zsynchronizować ewentualne inne dane
-          get().fetchBoard();
-      } catch (e) {
-          console.error("Błąd zapisu kolejności:", e);
-          // Revert - w razie błędu cofamy klocek na stare miejsce
-          set({ columns: previousColumns });
+          await client.patch(`/kanban/items/${itemId}`, { columnId: targetColumnId, rowId: targetRowId });
+          get().fetchBoard(); 
+      } catch (e: any) { 
+          // TEN ALERT POKAŻE CI, ŻE TO BACKEND BLOKUJE AKCJĘ!
+          alert(`Uwaga: Backend odrzucił przeniesienie!\nZajrzyj w konsolę (F12) w przeglądarce i terminal NestJS, aby sprawdzić dlaczego.\n\nBłąd: ${e.message}`);
+          console.error("Szczegóły błędu backendu:", e); 
+          // Cofamy UI do stanu z bazy (to dlatego wcześniej miałeś iluzję, że przeciąganie nie działa)
+          get().fetchBoard(); 
       }
-  },
-
-  toggleSelection: (itemId) => {
-      set(state => {
-          const isSelected = state.selectedItems.includes(itemId);
-          return {
-              selectedItems: isSelected 
-                  ? state.selectedItems.filter(id => id !== itemId)
-                  : [...state.selectedItems, itemId]
-          };
-      });
-  },
-  
-  clearSelection: () => set({ selectedItems: [] })
+  }
 }));

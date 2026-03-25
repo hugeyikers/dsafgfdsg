@@ -25,12 +25,14 @@ __decorate([
     __metadata("design:type", String)
 ], UpdateItemDto.prototype, "title", void 0);
 __decorate([
+    (0, class_validator_1.ValidateIf)((object, value) => value !== null),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Number)
 ], UpdateItemDto.prototype, "columnId", void 0);
 __decorate([
+    (0, class_validator_1.ValidateIf)((object, value) => value !== null),
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Number)

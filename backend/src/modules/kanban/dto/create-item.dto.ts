@@ -16,7 +16,7 @@ export class CreateItemDto {
   @IsNumber()
   @IsInt()
   @IsOptional()
-  rowId?: number;
+  rowId?: number | null;
 
   @ValidateIf((object, value) => value !== null)
   @IsNumber()

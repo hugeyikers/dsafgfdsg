@@ -19,7 +19,6 @@ interface UserState {
   updateUserRole: (id: number, role: 'ADMINISTRATOR' | 'USER') => Promise<void>;
   updateUserPassword: (id: number, password: string) => Promise<void>;
   deleteUser: (id: number) => Promise<void>;
-  reorderUsers: (startIndex: number, endIndex: number) => void;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
@@ -41,7 +40,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await client.post('/users', userData);
-      await get().fetchUsers(); 
+      await get().fetchUsers(); // Odśwież listę
     } catch (error: any) {
       set({ error: error.message || 'Błąd tworzenia użytkownika', isLoading: false });
       throw error;
@@ -52,7 +51,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await client.put(`/users/${id}`, { role });
-      await get().fetchUsers(); 
+      await get().fetchUsers(); // Odśwież listę
     } catch (error: any) {
       set({ error: error.message || 'Błąd aktualizacji roli', isLoading: false });
       throw error;
@@ -63,6 +62,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await client.put(`/users/${id}`, { password });
+      // Nie musimy odświeżać listy użytkowników po zmianie hasła
       set({ isLoading: false });
     } catch (error: any) {
       set({ error: error.message || 'Błąd aktualizacji hasła', isLoading: false });
@@ -74,19 +74,10 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await client.delete(`/users/${id}`);
-      await get().fetchUsers(); 
+      await get().fetchUsers(); // Odśwież listę
     } catch (error: any) {
       set({ error: error.message || 'Błąd usuwania użytkownika', isLoading: false });
       throw error;
     }
   },
-
-  reorderUsers: (startIndex, endIndex) => {
-    set((state) => {
-      const result = Array.from(state.users);
-      const [removed] = result.splice(startIndex, 1);
-      result.splice(endIndex, 0, removed);
-      return { users: result };
-    });
-  }
 }));
