@@ -13,7 +13,6 @@ interface TaskProps {
 
 const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClick }) => {
     const { updateItem } = useKanbanStore();
-    
     const [isNativeDragOver, setIsNativeDragOver] = useState(false);
 
     const handleClick = (e: React.MouseEvent) => {
@@ -26,19 +25,9 @@ const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClic
         onDoubleClick();
     };
 
-    const handleNativeDragOver = (e: React.DragEvent) => {
-        e.preventDefault(); 
-    };
-
-    const handleNativeDragEnter = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsNativeDragOver(true);
-    };
-
-    const handleNativeDragLeave = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsNativeDragOver(false);
-    };
+    const handleNativeDragOver = (e: React.DragEvent) => { e.preventDefault(); };
+    const handleNativeDragEnter = (e: React.DragEvent) => { e.preventDefault(); setIsNativeDragOver(true); };
+    const handleNativeDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsNativeDragOver(false); };
 
     const handleNativeDrop = (e: React.DragEvent) => {
         e.preventDefault();
@@ -86,6 +75,7 @@ const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClic
                     }}
                 >
                     <div className="flex items-center justify-center flex-1 px-1 mb-2 w-full text-center pointer-events-none relative z-20">
+                        {/* Wyświetlamy dokładnie item.title z bazy */}
                         <p className="text-[13px] font-extrabold text-gray-900 break-words leading-tight tracking-tight select-none w-full">
                             {item.title || "Untitled Task"}
                         </p>

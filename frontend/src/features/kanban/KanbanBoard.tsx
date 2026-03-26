@@ -18,7 +18,10 @@ const KanbanBoard = () => {
 
     const [deletePrompt, setDeletePrompt] = useState<{type: PanelType, id: number, hasItems: boolean} | null>(null);
     const [targetMoveId, setTargetMoveId] = useState<number | 'unlabeled'>('unlabeled');
+    
+    // ZARZĄDZANIE PRAWYM PASKIEM I FILTROWANIEM
     const [showUsersBar, setShowUsersBar] = useState(false);
+    const [filteredUserIds, setFilteredUserIds] = useState<number[]>([]);
 
     const leftSidebarRef = useRef<HTMLDivElement>(null);
     const topUsersBarRef = useRef<HTMLDivElement>(null);
@@ -34,7 +37,7 @@ const KanbanBoard = () => {
         fetchUsers();
     }, []);
 
-    // --- ZAMYKANIE PANELU (KLIKNIĘCIE POZA TABLICĄ) ---
+    // ZAMYKANIE LEWEGO PANELU
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (!panel.isOpen) return;
@@ -43,7 +46,6 @@ const KanbanBoard = () => {
             if (leftSidebarRef.current?.contains(target)) return;
             if (topUsersBarRef.current?.contains(target)) return;
 
-            // Zabezpieczenie: jeśli kliknięto w samą białą tablicę zadań, ignorujemy (obsłużą to zdarzenia onClick komórek)
             const boardContainer = document.getElementById('kanban-board-container');
             if (boardContainer?.contains(target)) return;
 
@@ -56,7 +58,7 @@ const KanbanBoard = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [panel.isOpen]);
 
-    // --- AUTOMATYCZNA SYNCHRONIZACJA (np. po Drag & Drop na otwartym tasku) ---
+    // SYNCHRONIZACJA PRZECIĄGNIĘĆ W LEWYM PANELU
     useEffect(() => {
         if (panel.isOpen && panel.type === 'task' && panel.item) {
             let updatedTask = null;
@@ -74,7 +76,19 @@ const KanbanBoard = () => {
         }
     }, [columns]);
 
-    const openPanel = (mode: PanelMode, type: PanelType, item: any = null, extra: any = null) => {
+    const openPanel = (mode: PanelMode, type: PanelType, item: any = null, extra: any = null, isDoubleClick: boolean = false) => {
+        const isSameItem = item ? panel.item?.id === item.id : (panel.item === null);
+        const isSameExtra = extra ? (panel.extra?.colId === extra.colId && panel.extra?.rowId === extra.rowId) : true;
+
+        if (panel.isOpen && panel.type === type && isSameItem && isSameExtra) {
+            if (isDoubleClick) {
+                setPanel(prev => ({ ...prev, isOpen: false }));
+            } else if (panel.mode !== mode) {
+                setPanel(prev => ({ ...prev, mode }));
+            }
+            return;
+        }
+
         setPanel({ isOpen: true, mode, type, item, extra });
         setFormData({
             title: item?.title || '',
@@ -90,7 +104,6 @@ const KanbanBoard = () => {
         if (trashTimeout.current) clearTimeout(trashTimeout.current);
         trashTimeout.current = setTimeout(() => { setShowTrash(true); }, 1500);
 
-        // --- ZMIANA KONTEKSTU SIDEBARA NA DRAGOWANY ELEMENT ---
         if (panel.isOpen) {
             const { draggableId, type } = start;
             if (!draggableId) return;
@@ -111,7 +124,8 @@ const KanbanBoard = () => {
             }
 
             if (draggedItem) {
-                openPanel('view', type as PanelType, draggedItem);
+                const targetMode = type === 'task' ? 'view' : 'edit';
+                openPanel(targetMode, type as PanelType, draggedItem, null, false);
             }
         }
     };
@@ -152,6 +166,7 @@ const KanbanBoard = () => {
                 if (!hasItems) {
                     if (window.confirm(`Are you sure you want to delete this ${type}?`)) {
                         type === 'column' ? removeColumn(id) : removeRow(id);
+                        if (panel.item?.id === id) setPanel(prev => ({ ...prev, isOpen: false }));
                     }
                 } else {
                     if (type === 'column') {
@@ -227,7 +242,14 @@ const KanbanBoard = () => {
 
             const finalContent = formData.content.trim() || 'none';
             if (panel.mode === 'add') {
-                await addItem(panel.extra.colId, panel.extra.rowId, finalTitle, finalContent, formData.color, formData.assignedToId);
+                await addItem({
+                    columnId: panel.extra.colId, 
+                    rowId: panel.extra.rowId, 
+                    title: finalTitle, 
+                    content: finalContent, 
+                    color: formData.color, 
+                    assignedToId: formData.assignedToId
+                });
             } else {
                 await updateItem(panel.item.id, { title: finalTitle, content: finalContent, color: formData.color, assignedToId: formData.assignedToId });
             }
@@ -276,10 +298,17 @@ const KanbanBoard = () => {
         }
     };
 
+    // LOGIKA POBIERANIA TASKÓW Z UWZGLĘDNIENIEM FILTROWANIA
     const getItems = (colId: number, rowId: number | null) => {
         const col = columns.find(c => c.id === colId);
         if (!col) return [];
-        return col.items.filter(item => item.rowId === rowId);
+        let result = col.items.filter(item => item.rowId === rowId);
+        
+        if (filteredUserIds.length > 0) {
+            result = result.filter(item => item.assignedToId && filteredUserIds.includes(item.assignedToId));
+        }
+        
+        return result;
     };
 
     const isBacklogPanel = panel.type === 'column' && panel.item?.title === 'Backlog';
@@ -302,13 +331,11 @@ const KanbanBoard = () => {
                 style={{ backgroundColor: cellBgColor, borderColor: cellBorderColor }}
                 onClick={(e) => {
                     if (e.target !== e.currentTarget && !(e.target as HTMLElement).closest('.flex-1')) return;
-                    if (panel.isOpen) {
-                        openPanel('add', 'task', null, { colId: col.id, rowId });
-                    }
+                    if (panel.isOpen) openPanel('add', 'task', null, { colId: col.id, rowId }, false);
                 }}
                 onDoubleClick={(e) => {
                     if (e.target !== e.currentTarget && !(e.target as HTMLElement).closest('.flex-1')) return;
-                    openPanel('add', 'task', null, { colId: col.id, rowId });
+                    openPanel('add', 'task', null, { colId: col.id, rowId }, true);
                 }}
             >
                 <Droppable droppableId={droppableId} type="task">
@@ -328,9 +355,9 @@ const KanbanBoard = () => {
                                     columns={columns} 
                                     rows={rows} 
                                     onClick={() => {
-                                        if (panel.isOpen) openPanel('view', 'task', item);
+                                        if (panel.isOpen) openPanel('view', 'task', item, null, false);
                                     }}
-                                    onDoubleClick={() => openPanel('view', 'task', item)}
+                                    onDoubleClick={() => openPanel('view', 'task', item, null, true)}
                                 />
                             ))}
                             {provided.placeholder}
@@ -349,55 +376,26 @@ const KanbanBoard = () => {
     return (
         <div className="h-full flex w-full bg-gray-50 relative overflow-hidden">
             
-            {/* WIDGET "ASSIGN USERS" */}
-            <div ref={topUsersBarRef} className="fixed top-2 right-6 z-[60] flex items-center h-12 flex-row-reverse">
+            {/* --- PRZYCISK TOGGLE "ASSIGN USERS" --- */}
+            <div ref={topUsersBarRef} className="fixed top-0 right-8 z-[60] flex items-center h-16 flex-row-reverse">
                 <button
                     onClick={() => setShowUsersBar(!showUsersBar)}
                     className={`group relative flex items-center justify-center w-12 h-12 rounded-xl transition-colors border-2 shadow-sm z-20
                         ${showUsersBar ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-300'}
+                        ${filteredUserIds.length > 0 ? 'ring-2 ring-blue-400 ring-offset-2' : ''}
                     `}
                 >
                     <Users size={24} strokeWidth={2.5} />
+                    
+                    {/* ZNACZNIK AKTYWNEGO FILTRA */}
+                    {filteredUserIds.length > 0 && (
+                        <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white"></div>
+                    )}
+
                     <div className="absolute -bottom-8 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none bg-gray-800 text-white text-[10px] px-2 py-1 rounded">
                         Toggle Assign Users
                     </div>
                 </button>
-
-                <div 
-                    className={`flex items-center transition-all duration-300 ease-out z-10 overflow-hidden
-                        ${showUsersBar ? 'max-w-[1000px] opacity-100 translate-x-0 mr-6 pr-1' : 'max-w-0 opacity-0 translate-x-8 mr-0 pr-0'}
-                    `}
-                >
-                    <div className="flex items-center gap-4 py-1 min-w-max">
-                        {users.map(u => {
-                            const taskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === u.id).length;
-                            const isOverLimit = taskCount >= 5;
-
-                            return (
-                                <div
-                                    key={u.id}
-                                    draggable={!isOverLimit}
-                                    onDragStart={(e) => {
-                                        e.dataTransfer.setData('text/plain', u.id.toString());
-                                        e.dataTransfer.effectAllowed = 'copy';
-                                    }}
-                                    className={`group relative flex flex-col items-center justify-center w-12 h-12 rounded-full border-2 transition-transform select-none
-                                        ${isOverLimit ? 'opacity-40 cursor-not-allowed border-red-300 bg-red-50 grayscale' : 'cursor-grab active:cursor-grabbing border-blue-200 bg-blue-50 hover:border-blue-500 hover:scale-110 shadow-sm'}
-                                    `}
-                                >
-                                    <span className={`font-bold text-sm ${isOverLimit ? 'text-gray-500' : 'text-blue-700'}`}>{u.fullName.substring(0, 2).toUpperCase()}</span>
-                                    <div className={`absolute -bottom-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${isOverLimit ? 'bg-red-100 text-red-700 border-red-200' : 'bg-white text-gray-600 border-gray-200 shadow-sm'}`}>
-                                        {taskCount}/5
-                                    </div>
-                                    <div className="absolute right-14 top-1/2 -translate-y-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none bg-gray-800 text-white text-[10px] px-2 py-1 rounded z-50">
-                                        {isOverLimit ? `${u.fullName} (Limit reached)` : `Drag to assign ${u.fullName}`}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                        {users.length === 0 && <span className="text-sm text-gray-400 italic bg-white px-3 py-1 rounded-lg border border-gray-200 shadow-sm">No users</span>}
-                    </div>
-                </div>
             </div>
 
             {/* --- LEWY SIDEBAR EDYCJI (ZWEŻA TABLICĘ) --- */}
@@ -568,7 +566,7 @@ const KanbanBoard = () => {
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                     <div className="flex-1 overflow-auto p-4 pt-0 mt-4">
-                        {/* ID do ignorowania kliknięć poza panelem */}
+                        {/* ID do ignorowania zamykania przy klikaniu na tablicę */}
                         <div id="kanban-board-container" className="inline-block min-w-full pb-20 bg-white border-2 border-gray-200 rounded-2xl shadow-sm overflow-hidden mt-16">
                             
                             {/* --- COLUMN HEADERS --- */}
@@ -576,14 +574,20 @@ const KanbanBoard = () => {
                                 
                                 <div className="w-56 h-full flex-shrink-0 border-r-2 border-gray-200 bg-white relative overflow-hidden group/corner">
                                     <button
-                                        onClick={() => openPanel('add', 'column')}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            openPanel('add', 'column', null, null, false);
+                                        }}
                                         className="absolute inset-0 w-full h-full text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors cursor-pointer outline-none font-black text-[12px] uppercase tracking-widest flex items-start justify-end pt-3.5 pr-4"
                                         style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}
                                     >
                                         Add Column &rarr;
                                     </button>
                                     <button
-                                        onClick={() => openPanel('add', 'row')}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            openPanel('add', 'row', null, null, false);
+                                        }}
                                         className="absolute inset-0 w-full h-full text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors cursor-pointer outline-none font-black text-[12px] uppercase tracking-widest flex items-end justify-start pb-3.5 pl-4 bg-gray-50/50"
                                         style={{ clipPath: 'polygon(0 0, 100% 100%, 0 100%)' }}
                                     >
@@ -598,14 +602,14 @@ const KanbanBoard = () => {
                                  
                                 {backlogColumn && (
                                     <div 
-                                        onClick={(e) => { e.stopPropagation(); if(panel.isOpen) openPanel('view', 'column', backlogColumn); }}
-                                        onDoubleClick={() => openPanel('view', 'column', backlogColumn)}
+                                        onClick={(e) => { e.stopPropagation(); if (panel.isOpen) openPanel('edit', 'column', backlogColumn, null, false); }}
+                                        onDoubleClick={(e) => { e.stopPropagation(); openPanel('edit', 'column', backlogColumn, null, true); }}
                                         className="group w-[360px] h-full flex-shrink-0 border-r-2 border-dashed flex flex-col items-center justify-center transition-colors select-none cursor-pointer hover:bg-gray-50 relative"
                                         style={{ borderColor: '#d1d5db', backgroundColor: 'transparent' }}
                                     >
                                         <h3 className="font-black text-sm tracking-widest uppercase text-center w-full truncate text-gray-400 px-4">{backlogColumn.title}</h3>
                                         <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-                                            <span className="text-[10px] italic text-gray-400">Double click to view</span>
+                                            <span className="text-[10px] italic text-gray-400 bg-white/70 px-2 py-0.5 rounded-full">Double click to edit</span>
                                         </div>
                                     </div>
                                 )}
@@ -622,8 +626,8 @@ const KanbanBoard = () => {
                                                                 ref={provided.innerRef}
                                                                 {...provided.draggableProps}
                                                                 {...provided.dragHandleProps}
-                                                                onClick={(e) => { e.stopPropagation(); if(panel.isOpen) openPanel('view', 'column', col); }}
-                                                                onDoubleClick={() => openPanel('view', 'column', col)}
+                                                                onClick={(e) => { e.stopPropagation(); if (panel.isOpen) openPanel('edit', 'column', col, null, false); }}
+                                                                onDoubleClick={(e) => { e.stopPropagation(); openPanel('edit', 'column', col, null, true); }}
                                                                 className={`group w-[360px] h-full flex-shrink-0 border-r-2 flex flex-col items-center justify-center select-none cursor-grab active:cursor-grabbing hover:brightness-95 transition-shadow transition-colors relative
                                                                     ${snapshot.isDragging ? 'z-50 shadow-2xl ring-2 ring-purple-500 border-none rounded-xl' : ''}
                                                                     ${isOverLimit ? 'ring-inset ring-2 ring-red-500 z-10' : ''}
@@ -645,7 +649,7 @@ const KanbanBoard = () => {
                                                                     )}
                                                                 </div>
                                                                 <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-                                                                    <span className="text-[10px] italic text-gray-500">Drag to reorder / Double click</span>
+                                                                    <span className="text-[10px] italic text-gray-500 bg-white/70 px-2 py-0.5 rounded-full">Drag to reorder / Double click</span>
                                                                 </div>
                                                             </div>
                                                         )}
@@ -675,14 +679,14 @@ const KanbanBoard = () => {
                                                     >
                                                         <div 
                                                             {...provided.dragHandleProps}
-                                                            onClick={(e) => { e.stopPropagation(); if(panel.isOpen) openPanel('view', 'row', row); }}
-                                                            onDoubleClick={() => openPanel('view', 'row', row)}
+                                                            onClick={(e) => { e.stopPropagation(); if (panel.isOpen) openPanel('edit', 'row', row, null, false); }}
+                                                            onDoubleClick={(e) => { e.stopPropagation(); openPanel('edit', 'row', row, null, true); }}
                                                             className="group w-56 flex-shrink-0 border-r-2 border-gray-200 p-6 flex flex-col items-center justify-center text-center cursor-grab active:cursor-grabbing hover:brightness-95 transition-colors select-none relative"
                                                             style={{ backgroundColor: row.color || '#ffffff' }}
                                                         >
                                                             <span className="font-black text-sm uppercase tracking-widest text-gray-900 drop-shadow-sm mb-2">{row.title}</span>
                                                             <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-                                                                <span className="text-[10px] italic text-gray-500">Drag to reorder / Double click</span>
+                                                                <span className="text-[10px] italic text-gray-500 bg-white/70 px-2 py-0.5 rounded-full">Drag to reorder / Double click</span>
                                                             </div>
                                                         </div>
 
@@ -731,6 +735,74 @@ const KanbanBoard = () => {
                     </div>
                 </DragDropContext>
             </div>
+
+            {/* --- PRAWY SIDEBAR Z UŻYTKOWNIKAMI (Z FILTROWANIEM) --- */}
+            <aside className={`flex flex-col bg-white border-l border-gray-200 transition-all duration-300 ease-in-out z-40 overflow-y-auto overflow-x-hidden ${showUsersBar ? 'w-28' : 'w-0 border-l-0'}`}>
+                <div className="flex flex-col items-center gap-7 py-6 min-w-[7rem] mt-2">
+                    
+                    {users.map(u => {
+                        const taskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === u.id).length;
+                        const isOverLimit = taskCount >= 5;
+                        const isFiltered = filteredUserIds.includes(u.id);
+                        const isAnyFilterActive = filteredUserIds.length > 0;
+                        const isDimmed = isAnyFilterActive && !isFiltered;
+
+                        let avatarClasses = "group relative flex flex-col items-center justify-center w-12 h-12 rounded-full border-2 transition-all select-none cursor-pointer shadow-sm ";
+                        if (isFiltered) {
+                            avatarClasses += "border-blue-500 bg-blue-50 ring-4 ring-blue-500/30 scale-110 ";
+                        } else if (isOverLimit) {
+                            avatarClasses += "border-red-300 bg-red-50 grayscale opacity-40 hover:opacity-100 hover:grayscale-0 ";
+                        } else {
+                            avatarClasses += "border-blue-200 bg-blue-50 hover:border-blue-500 hover:scale-110 ";
+                        }
+
+                        if (isDimmed) {
+                            avatarClasses += "opacity-30 grayscale hover:opacity-100 hover:grayscale-0 ";
+                        }
+
+                        return (
+                            <div
+                                key={u.id}
+                                draggable={!isOverLimit}
+                                onDragStart={(e) => {
+                                    e.dataTransfer.setData('text/plain', u.id.toString());
+                                    e.dataTransfer.effectAllowed = 'copy';
+                                }}
+                                onClick={() => {
+                                    setFilteredUserIds(prev => 
+                                        prev.includes(u.id) ? prev.filter(id => id !== u.id) : [...prev, u.id]
+                                    );
+                                }}
+                                onDoubleClick={(e) => {
+                                    e.stopPropagation();
+                                    setFilteredUserIds([u.id]);
+                                }}
+                                className={avatarClasses}
+                            >
+                                <span className={`font-bold text-sm ${isOverLimit && !isFiltered ? 'text-gray-500' : 'text-blue-700'}`}>{u.fullName.substring(0, 2).toUpperCase()}</span>
+                                <div className={`absolute -bottom-3 px-2 py-0.5 rounded-md text-xs font-bold border ${isOverLimit ? 'bg-red-100 text-red-700 border-red-200' : 'bg-white text-gray-600 border-gray-200 shadow-sm'}`}>
+                                    {taskCount}/5
+                                </div>
+                                <div className="absolute right-16 top-1/2 -translate-y-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none bg-gray-800 text-white text-[10px] px-2 py-1 rounded z-50">
+                                    {isFiltered ? `Remove filter` : `Filter by ${u.fullName}`}
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {users.length === 0 && <span className="text-sm text-gray-400 italic bg-white px-3 py-1 rounded-lg border border-gray-200 shadow-sm">No users</span>}
+                    
+                    {/* PRZYCISK RESETOWANIA FILTROWANIA - NA SAMYM DOLE LITY */}
+                    {filteredUserIds.length > 0 && (
+                        <button 
+                            onClick={() => setFilteredUserIds([])}
+                            className="flex flex-col items-center justify-center gap-1 text-[10px] font-bold bg-red-50 text-red-600 px-3 py-2 rounded-xl border border-red-200 hover:bg-red-100 transition-colors shadow-sm mt-2"
+                        >
+                            <X size={16} />
+                            <span>Clear Filter</span>
+                        </button>
+                    )}
+                </div>
+            </aside>
 
             {/* Modal Delete Guard */}
             {deletePrompt && (

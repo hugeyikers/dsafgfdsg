@@ -3,20 +3,20 @@ import client from '../api/client';
 
 export interface KanbanItem {
   id: number;
+  title: string;
   content: string;
   order: number;
   columnId: number;
   rowId: number | null;
-  assignedToId?: number | null;
-  color?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  title?: string;
+  assignedToId: number | null;
   assignedTo?: {
       id: number;
       fullName: string;
       email: string;
   };
+  color?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface KanbanColumn {
@@ -32,6 +32,7 @@ export interface KanbanRow {
     id: number;
     title: string;
     order: number;
+    limit: number;
     color?: string;
 }
 
@@ -42,7 +43,6 @@ interface KanbanState {
   
   fetchBoard: () => Promise<void>;
   
-  // Zaktualizowano addColumn i updateColumn o obsługę 'limit'
   addColumn: (title: string, color?: string, limit?: number) => Promise<void>;
   updateColumn: (id: number, data: { title?: string, color?: string, order?: number, limit?: number }) => Promise<void>;
   removeColumn: (id: number, action?: 'delete_tasks' | 'move_tasks', targetColId?: number) => Promise<void>;
@@ -53,7 +53,8 @@ interface KanbanState {
   removeRow: (id: number, action?: 'delete_tasks' | 'move_tasks', targetRowId?: number | null) => Promise<void>;
   reorderRows: (startIndex: number, endIndex: number) => Promise<void>;
 
-  addItem: (columnId: number, rowId: number | null, title: string, content: string, color?: string, assignedToId?: number | null) => Promise<void>;
+  // FIX: Używamy obiektu, aby nazwy zmiennych się nie pomieszały!
+  addItem: (data: { columnId: number, rowId: number | null, title: string, content: string, color?: string, assignedToId?: number | null }) => Promise<void>;
   updateItem: (itemId: number, data: Partial<KanbanItem>) => Promise<void>;
   removeItem: (itemId: number) => Promise<void>;
   
@@ -133,9 +134,10 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     } catch(e) { console.error(e); get().fetchBoard(); }
   },
 
-  addItem: async (columnId, rowId, title, content, color, assignedToId) => {
+  // FIX: Odbieramy obiekt wysłany z KanbanBoard
+  addItem: async (data) => {
     try { 
-        await client.post('/kanban/items', { columnId, rowId, title: title, content: content, color, assignedToId }); 
+        await client.post('/kanban/items', data); 
         get().fetchBoard(); 
     } catch (e) { console.error(e); }
   },
