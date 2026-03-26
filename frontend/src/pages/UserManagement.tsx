@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useUserStore, User } from '../store/useUserStore';
+import { useKanbanStore } from '../store/useKanbanStore';
 import { Trash2, UserCog, UserPlus, X, Save, Key, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 
 const UserManagement = () => {
   const { users, fetchUsers, createUser, updateUserRole, updateUserPassword, deleteUser, isLoading, error } = useUserStore();
+  const { columns, fetchBoard } = useKanbanStore();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [selectedUserForPassword, setSelectedUserForPassword] = useState<User | null>(null);
@@ -11,11 +14,11 @@ const UserManagement = () => {
   const [showPassword, setShowPassword] = useState(false);
   
   const [newUser, setNewUser] = useState({ fullName: '', email: '', password: '', role: 'USER' as const });
-  const [editingUserId, setEditingUserId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+    fetchBoard();
+  }, [fetchUsers, fetchBoard]);
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,16 +99,29 @@ const UserManagement = () => {
               <th className="px-6 py-4">ID</th>
               <th className="px-6 py-4">Full Name</th>
               <th className="px-6 py-4">Email</th>
+              <th className="px-6 py-4">Tasks</th>
               <th className="px-6 py-4">Role</th>
               <th className="px-6 py-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {users.map((user) => (
+            {users.map((user) => {
+              // POPRAWIONE DYNAMICZNE LICZENIE ZADAŃ Z FRONTENDU
+              const taskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === user.id).length;
+              const isOverLimit = taskCount >= 5;
+
+              return (
               <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4 font-mono text-gray-400">#{user.id}</td>
                 <td className="px-6 py-4 font-bold text-gray-800">{user.fullName}</td>
                 <td className="px-6 py-4 text-gray-600">{user.email}</td>
+                <td className="px-6 py-4">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold border 
+                        ${isOverLimit ? 'bg-red-100 text-red-700 border-red-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}
+                    >
+                        {taskCount} / 5
+                    </span>
+                </td>
                 <td className="px-6 py-4">
                   <select
                     value={user.role}
@@ -139,10 +155,10 @@ const UserManagement = () => {
                   </div>
                 </td>
               </tr>
-            ))}
+            )})}
             {users.length === 0 && !isLoading && (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-gray-400 italic">
+                <td colSpan={6} className="px-6 py-8 text-center text-gray-400 italic">
                   No users to display.
                 </td>
               </tr>
