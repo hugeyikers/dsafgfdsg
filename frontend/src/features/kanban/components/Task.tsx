@@ -31,7 +31,7 @@ const Task: React.FC<TaskProps> = ({ item, index }) => {
     };
 
     const handleDoubleClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
+        e.stopPropagation(); // To sprawia, że dwuklik na tasku NIE wywołuje dodawania nowego taska pod spodem
         setEditData({
             title: item.title || '',
             content: item.content || '',
@@ -45,7 +45,7 @@ const Task: React.FC<TaskProps> = ({ item, index }) => {
     const handleSaveChanges = () => {
         const finalData = { ...editData };
         if (!finalData.content || finalData.content.trim() === '') {
-            finalData.content = 'brak';
+            finalData.content = 'none';
         }
         updateItem(item.id, finalData);
         setIsEditing(false);
@@ -75,7 +75,7 @@ const Task: React.FC<TaskProps> = ({ item, index }) => {
                         {...provided.draggableProps}
                         {...provided.dragHandleProps}
                         onDoubleClick={handleDoubleClick}
-                        // ZMIANA: Dodane mb-3, usunięte transition-all i scale-105. Teraz bezpiecznie korzystamy tylko z transition-shadow i transition-colors
+                        // ZMIANA: w-full i mb-3 gwarantują poprawny layout wewnątrz uproszczonego modala
                         className={`relative w-full mb-3 p-3 flex flex-col items-center justify-center rounded-xl border border-gray-200 group min-h-[85px] overflow-hidden cursor-pointer text-center transition-shadow transition-colors duration-200
                             ${snapshot.isDragging ? 'shadow-2xl z-50 ring-2 ring-purple-500' : 'shadow-sm hover:border-purple-400 hover:shadow-md'}
                         `}
@@ -105,7 +105,7 @@ const Task: React.FC<TaskProps> = ({ item, index }) => {
                 )}
             </Draggable>
 
-            {/* MODAL SZCZEGÓŁÓW / EDYCJI (W PORTALU) */}
+            {/* MODAL SZCZEGÓŁÓW / EDYCJI */}
             {showDetails && createPortal(
                 <div 
                     onMouseDown={stopDrag} onTouchStart={stopDrag}
@@ -185,14 +185,14 @@ const Task: React.FC<TaskProps> = ({ item, index }) => {
                                 {isEditing ? (
                                     <textarea 
                                         className="w-full text-sm p-4 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-colors resize-none min-h-[150px] shadow-inner"
-                                        value={editData.content === 'brak' ? '' : editData.content}
+                                        value={editData.content === 'none' ? '' : editData.content}
                                         onChange={(e) => setEditData({...editData, content: e.target.value})}
                                         placeholder="Add details, steps, notes..."
                                     />
                                 ) : (
                                     <div className="bg-gray-50/80 p-4 rounded-xl border border-gray-100 min-h-[100px] shadow-inner">
                                         <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                                            {item.content && item.content.trim() !== '' && item.content !== 'brak' 
+                                            {item.content && item.content.trim() !== '' && item.content !== 'none' 
                                                 ? item.content 
                                                 : <span className="italic text-gray-400">No description provided.</span>
                                             }

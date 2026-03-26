@@ -42,8 +42,9 @@ interface KanbanState {
   
   fetchBoard: () => Promise<void>;
   
-  addColumn: (title: string, color?: string) => Promise<void>;
-  updateColumn: (id: number, data: { title?: string, color?: string, order?: number }) => Promise<void>;
+  // Zaktualizowano addColumn i updateColumn o obsługę 'limit'
+  addColumn: (title: string, color?: string, limit?: number) => Promise<void>;
+  updateColumn: (id: number, data: { title?: string, color?: string, order?: number, limit?: number }) => Promise<void>;
   removeColumn: (id: number, action?: 'delete_tasks' | 'move_tasks', targetColId?: number) => Promise<void>;
   reorderColumns: (startIndex: number, endIndex: number) => Promise<void>;
   
@@ -52,7 +53,6 @@ interface KanbanState {
   removeRow: (id: number, action?: 'delete_tasks' | 'move_tasks', targetRowId?: number | null) => Promise<void>;
   reorderRows: (startIndex: number, endIndex: number) => Promise<void>;
 
-  // Uporządkowane parametry
   addItem: (columnId: number, rowId: number | null, title: string, content: string, color?: string, assignedToId?: number | null) => Promise<void>;
   updateItem: (itemId: number, data: Partial<KanbanItem>) => Promise<void>;
   removeItem: (itemId: number) => Promise<void>;
@@ -73,7 +73,7 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     } catch (e) { console.error(e); } finally { set({ isLoading: false }); }
   },
 
-  addColumn: async (title, color) => { try { await client.post('/kanban/columns', { title, color }); get().fetchBoard(); } catch (e) { console.error(e); } },
+  addColumn: async (title, color, limit = 0) => { try { await client.post('/kanban/columns', { title, color, limit }); get().fetchBoard(); } catch (e) { console.error(e); } },
   updateColumn: async (id, data) => { try { await client.patch(`/kanban/columns/${id}`, data); get().fetchBoard(); } catch (e) { console.error(e); } },
   
   removeColumn: async (id, action, targetColId) => { 
@@ -135,7 +135,6 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
 
   addItem: async (columnId, rowId, title, content, color, assignedToId) => {
     try { 
-        // WYRAŹNE ROZDZIELENIE TYTUŁU I OPISU
         await client.post('/kanban/items', { columnId, rowId, title: title, content: content, color, assignedToId }); 
         get().fetchBoard(); 
     } catch (e) { console.error(e); }

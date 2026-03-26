@@ -30,7 +30,7 @@ const UserManagement = () => {
   };
 
   const handleDeleteUser = async (id: number) => {
-    if (window.confirm('Czy na pewno chcesz usunąć tego użytkownika?')) {
+    if (window.confirm('Are you sure you want to delete this user?')) {
       await deleteUser(id);
     }
   };
@@ -52,8 +52,7 @@ const UserManagement = () => {
     e.preventDefault();
     if (!selectedUserForPassword || !newPassword) return;
     
-    // Dodatkowe, proste potwierdzenie w oknie dialogowym przeglądarki
-    if (!window.confirm(`Czy na pewno zmienić hasło dla użytkownika ${selectedUserForPassword.fullName}? Ta operacja jest nieodwracalna.`)) {
+    if (!window.confirm(`Are you sure you want to change the password for user ${selectedUserForPassword.fullName}? This action is irreversible.`)) {
       return;
     }
 
@@ -61,10 +60,10 @@ const UserManagement = () => {
       await updateUserPassword(selectedUserForPassword.id, newPassword);
       setIsPasswordModalOpen(false);
       setNewPassword('');
-      alert('Hasło zostało zmienione pomyślnie.');
+      alert('Password changed successfully.');
     } catch (err) {
       console.error(err);
-      alert('Wystąpił błąd podczas zmiany hasła.');
+      alert('An error occurred while changing the password.');
     }
   };
 
@@ -72,15 +71,15 @@ const UserManagement = () => {
     <div className="flex h-full flex-col bg-gray-50 p-8 overflow-y-auto">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Zarządzanie Użytkownikami</h1>
-          <p className="text-gray-500 mt-1">Dodawaj, usuwaj i edytuj uprawnienia użytkowników.</p>
+          <h1 className="text-3xl font-bold text-gray-800">User Management</h1>
+          <p className="text-gray-500 mt-1">Add, remove, and edit user permissions.</p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 rounded-xl bg-purple-600 px-5 py-3 font-semibold text-white shadow-lg transition-all hover:bg-purple-700 hover:shadow-purple-200"
         >
           <UserPlus size={20} />
-          Nowy Użytkownik
+          New User
         </button>
       </div>
 
@@ -95,10 +94,10 @@ const UserManagement = () => {
           <thead className="bg-gray-100 text-xs uppercase text-gray-500 font-bold border-b border-gray-200">
             <tr>
               <th className="px-6 py-4">ID</th>
-              <th className="px-6 py-4">Imię i Nazwisko</th>
+              <th className="px-6 py-4">Full Name</th>
               <th className="px-6 py-4">Email</th>
-              <th className="px-6 py-4">Rola</th>
-              <th className="px-6 py-4 text-right">Akcje</th>
+              <th className="px-6 py-4">Role</th>
+              <th className="px-6 py-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -126,14 +125,14 @@ const UserManagement = () => {
                     <button
                       onClick={() => openPasswordModal(user)}
                       className="rounded-lg p-2 text-gray-400 hover:bg-yellow-50 hover:text-yellow-600 transition-colors"
-                      title="Zmień hasło"
+                      title="Change password"
                     >
                       <Key size={18} />
                     </button>
                     <button
                       onClick={() => handleDeleteUser(user.id)}
                       className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                      title="Usuń użytkownika"
+                      title="Delete user"
                     >
                       <Trash2 size={18} />
                     </button>
@@ -144,7 +143,7 @@ const UserManagement = () => {
             {users.length === 0 && !isLoading && (
               <tr>
                 <td colSpan={5} className="px-6 py-8 text-center text-gray-400 italic">
-                  Brak użytkowników do wyświetlenia.
+                  No users to display.
                 </td>
               </tr>
             )}
@@ -152,14 +151,14 @@ const UserManagement = () => {
         </table>
       </div>
 
-      {/* Modal - Zmiana hasła */}
+      {/* Password Change Modal */}
       {isPasswordModalOpen && selectedUserForPassword && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in duration-200 border-t-4 border-yellow-500">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                 <Key className="text-yellow-500" size={24} />
-                Zmiana hasła
+                Change Password
               </h2>
               <button 
                 onClick={() => setIsPasswordModalOpen(false)}
@@ -172,14 +171,14 @@ const UserManagement = () => {
             <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-100 flex gap-3 text-yellow-800 text-sm">
                 <AlertTriangle className="flex-shrink-0" size={20} />
                 <div>
-                    <span className="font-bold block mb-1">Uwaga!</span>
-                    Zmieniasz hasło dla użytkownika <span className="font-bold">{selectedUserForPassword.fullName}</span> ({selectedUserForPassword.email}). Użytkownik zostanie wylogowany ze wszystkich sesji.
+                    <span className="font-bold block mb-1">Warning!</span>
+                    You are changing the password for user <span className="font-bold">{selectedUserForPassword.fullName}</span> ({selectedUserForPassword.email}). The user will be logged out of all sessions.
                 </div>
             </div>
             
             <form onSubmit={handlePasswordChange} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nowe Hasło</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -188,7 +187,7 @@ const UserManagement = () => {
                     className="w-full rounded-lg border border-gray-300 px-4 py-2 pr-10 focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Wpisz nowe hasło..."
+                    placeholder="Enter new password..."
                   />
                   <button
                     type="button"
@@ -198,7 +197,7 @@ const UserManagement = () => {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">Minimum 6 znaków.</p>
+                <p className="mt-1 text-xs text-gray-500">Minimum 6 characters.</p>
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
@@ -207,14 +206,14 @@ const UserManagement = () => {
                   onClick={() => setIsPasswordModalOpen(false)}
                   className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
                 >
-                  Anuluj
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-600 shadow-md shadow-yellow-200"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Zmienianie...' : 'Zmień Hasło'}
+                  {isLoading ? 'Changing...' : 'Change Password'}
                 </button>
               </div>
             </form>
@@ -222,12 +221,12 @@ const UserManagement = () => {
         </div>
       )}
 
-      {/* Modal - Dodawanie użytkownika */}
+      {/* Add User Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-800">Dodaj Użytkownika</h2>
+              <h2 className="text-xl font-bold text-gray-800">Add User</h2>
               <button 
                 onClick={() => setIsModalOpen(false)}
                 className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
@@ -238,14 +237,14 @@ const UserManagement = () => {
             
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Pełna Nazwa</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                 <input
                   type="text"
                   required
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                   value={newUser.fullName}
                   onChange={(e) => setNewUser({...newUser, fullName: e.target.value})}
-                  placeholder="Jan Kowalski"
+                  placeholder="John Doe"
                 />
               </div>
 
@@ -257,12 +256,12 @@ const UserManagement = () => {
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                   value={newUser.email}
                   onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                  placeholder="jan@example.com"
+                  placeholder="john@example.com"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Hasło</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                 <input
                   type="password"
                   required
@@ -274,13 +273,13 @@ const UserManagement = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rola</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                 <select
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white"
                   value={newUser.role}
                   onChange={(e) => setNewUser({...newUser, role: e.target.value as 'ADMINISTRATOR' | 'USER'})}
                 >
-                  <option value="USER">Użytkownik</option>
+                  <option value="USER">User</option>
                   <option value="ADMINISTRATOR">Administrator</option>
                 </select>
               </div>
@@ -291,14 +290,14 @@ const UserManagement = () => {
                   onClick={() => setIsModalOpen(false)}
                   className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
                 >
-                  Anuluj
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Dodawanie...' : 'Dodaj Użytkownika'}
+                  {isLoading ? 'Adding...' : 'Add User'}
                 </button>
               </div>
             </form>

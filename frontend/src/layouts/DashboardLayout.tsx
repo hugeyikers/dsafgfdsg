@@ -56,7 +56,7 @@ const DashboardLayout = ({ user }: { user: User }) => {
                 <button 
                   className="ml-4 p-2 text-gray-400 hover:text-red-500 transition-transform hover:scale-110"
                   onClick={handleLogout}
-                  title="Wyloguj"
+                  title="Logout"
                 >
                   <LogOut size={20} />
                 </button>

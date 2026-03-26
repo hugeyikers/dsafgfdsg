@@ -14,13 +14,13 @@ const KanbanBoard = () => {
     const trashTimeout = useRef<NodeJS.Timeout | null>(null);
 
     const [deletePrompt, setDeletePrompt] = useState<{type: 'column'|'row', id: number, hasItems: boolean} | null>(null);
-    const [targetMoveId, setTargetMoveId] = useState<number | 'unassigned'>('unassigned');
+    const [targetMoveId, setTargetMoveId] = useState<number | 'unlabeled'>('unlabeled');
 
     const [addingToCell, setAddingToCell] = useState<{colId: number, rowId: number | null} | null>(null);
     const [newTaskData, setNewTaskData] = useState({ title: '', content: '', color: '#ffffff', assignedToId: null as number | null });
 
     const [entityModal, setEntityModal] = useState<{ isOpen: boolean; mode: 'add' | 'edit'; type: 'column' | 'row'; item?: any; }>({ isOpen: false, mode: 'add', type: 'column' });
-    const [entityEditData, setEntityEditData] = useState({ title: '', color: '#ffffff' });
+    const [entityEditData, setEntityEditData] = useState({ title: '', color: '#ffffff', limit: 0 });
 
     useEffect(() => {
         fetchBoard();
@@ -72,9 +72,9 @@ const KanbanBoard = () => {
                 } else {
                     if (type === 'column') {
                         const availableCols = columns.filter(c => c.id !== id);
-                        setTargetMoveId(availableCols.length > 0 ? availableCols[0].id : 'unassigned');
+                        setTargetMoveId(availableCols.length > 0 ? availableCols[0].id : 'unlabeled');
                     } else {
-                        setTargetMoveId('unassigned');
+                        setTargetMoveId('unlabeled');
                     }
                     setDeletePrompt({ type, id, hasItems });
                 }
@@ -95,9 +95,21 @@ const KanbanBoard = () => {
 
         if (type === 'task' || destination.droppableId.startsWith('cell-')) {
             const itemId = parseInt(draggableId.split('-')[1]);
+            const sourceParts = source.droppableId.split('-');
             const destParts = destination.droppableId.split('-');
+            const sourceColId = parseInt(sourceParts[1]);
             const targetColId = parseInt(destParts[1]);
             const targetRowId = destParts[2] === 'null' ? null : parseInt(destParts[2]);
+
+            if (sourceColId !== targetColId) {
+                const targetCol = columns.find(c => c.id === targetColId);
+                if (targetCol && targetCol.limit > 0 && targetCol.items.length >= targetCol.limit) {
+                    if (!window.confirm(`WIP LIMIT WARNING!\n\nColumn "${targetCol.title}" has a WIP limit of ${targetCol.limit} tasks.\nAdding this task will exceed the limit. Are you sure you want to proceed?`)) {
+                        return;
+                    }
+                }
+            }
+
             moveItem(itemId, targetColId, targetRowId);
         }
     };
@@ -105,10 +117,10 @@ const KanbanBoard = () => {
     const handleEntitySave = () => {
         const finalTitle = entityEditData.title.trim() || `New ${entityModal.type}`;
         if (entityModal.mode === 'add') {
-            if (entityModal.type === 'column') addColumn(finalTitle, entityEditData.color);
+            if (entityModal.type === 'column') addColumn(finalTitle, entityEditData.color, entityEditData.limit);
             else addRow(finalTitle, entityEditData.color);
         } else {
-            if (entityModal.type === 'column') updateColumn(entityModal.item.id, { title: finalTitle, color: entityEditData.color });
+            if (entityModal.type === 'column') updateColumn(entityModal.item.id, { title: finalTitle, color: entityEditData.color, limit: entityEditData.limit });
             else updateRow(entityModal.item.id, { title: finalTitle, color: entityEditData.color });
         }
         setEntityModal({ ...entityModal, isOpen: false });
@@ -132,9 +144,9 @@ const KanbanBoard = () => {
         } else {
             if (type === 'column') {
                 const availableCols = columns.filter(c => c.id !== item.id);
-                setTargetMoveId(availableCols.length > 0 ? availableCols[0].id : 'unassigned');
+                setTargetMoveId(availableCols.length > 0 ? availableCols[0].id : 'unlabeled');
             } else {
-                setTargetMoveId('unassigned');
+                setTargetMoveId('unlabeled');
             }
             setDeletePrompt({ type, id: item.id, hasItems });
         }
@@ -156,8 +168,16 @@ const KanbanBoard = () => {
 
     const handleAddTask = async () => {
         if (!addingToCell) return;
+
+        const targetCol = columns.find(c => c.id === addingToCell.colId);
+        if (targetCol && targetCol.limit > 0 && targetCol.items.length >= targetCol.limit) {
+            if (!window.confirm(`WIP LIMIT WARNING!\n\nColumn "${targetCol.title}" has a WIP limit of ${targetCol.limit} tasks.\nAdding a new task will exceed the limit. Are you sure you want to proceed?`)) {
+                return;
+            }
+        }
+        
         const finalTitle = newTaskData.title.trim() || 'Untitled Task';
-        const finalContent = newTaskData.content.trim() || 'brak';
+        const finalContent = newTaskData.content.trim() || 'none';
         await addItem(addingToCell.colId, addingToCell.rowId, finalTitle, finalContent, newTaskData.color, newTaskData.assignedToId);
         setAddingToCell(null);
     };
@@ -170,23 +190,27 @@ const KanbanBoard = () => {
 
     const isBacklogModal = entityModal.mode === 'edit' && entityModal.type === 'column' && entityModal.item?.title === 'Backlog';
 
-    // --- FUNKCJA RENDERUJĄCA KOMÓRKI ---
+    // --- FUNKCJA RENDERUJĄCA KOMÓRKI Z PANCERNYM UKŁADEM ---
     const renderCell = (col: any, rowId: number | null, isBacklog: boolean, rowColor: string = '#ffffff') => {
         const items = getItems(col.id, rowId);
         const droppableId = `cell-${col.id}-${rowId}`;
         
-        const cellBorderColor = isBacklog ? '#d1d5db' : (col.color && col.color !== '#ffffff' ? col.color : '#e5e7eb');
-        const cellBgColor = isBacklog ? 'transparent' : rowColor;
+        const isOverLimit = col.limit > 0 && col.items.length > col.limit;
+
+        const cellBorderColor = isOverLimit ? '#f87171' : (isBacklog ? '#d1d5db' : (col.color && col.color !== '#ffffff' ? col.color : '#e5e7eb'));
+        const cellBgColor = isOverLimit ? '#fef2f2' : (isBacklog ? 'transparent' : rowColor);
 
         return (
             <div 
                 key={droppableId}
+                // Usunąłem surowe sprawdzanie targetów - React naturalnie przechwyci dwuklik w puste tło
                 onDoubleClick={() => {
                     setAddingToCell({colId: col.id, rowId});
                     setNewTaskData({ title: '', content: '', color: '#ffffff', assignedToId: null });
                 }}
-                className={`w-[360px] flex-shrink-0 border-r-2 p-4 transition-colors duration-200 flex flex-col min-h-[140px] cursor-pointer
+                className={`w-[360px] flex-shrink-0 border-r-2 transition-colors duration-200 flex flex-col min-h-[140px] cursor-pointer relative
                     ${isBacklog ? 'border-dashed' : ''}
+                    ${isOverLimit ? 'ring-inset ring-2 ring-red-400/50' : ''}
                     hover:brightness-[0.98]
                 `}
                 style={{ 
@@ -195,14 +219,15 @@ const KanbanBoard = () => {
                 }}
                 title="Double-click empty space to add task"
             >
+                {/* 1. Pojemnik Droppable - Tylko dla tasków! Czysto i elastycznie */}
                 <Droppable droppableId={droppableId} type="task">
                     {(provided, snapshot) => (
                         <div 
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-                            // ZMIANA: Usunięte gap-4, zostaje tylko flex-col i transition-colors
-                            className={`flex-1 flex flex-col rounded-xl transition-colors h-full
-                                ${snapshot.isDraggingOver ? 'bg-black/5 shadow-inner' : ''}
+                            // Tutaj wyśrodkowujemy taski poziomymi paddingami (px-4). Taski dostają klasę mb-3 od siebie.
+                            className={`flex-1 flex flex-col px-4 pt-4 transition-colors
+                                ${snapshot.isDraggingOver ? (isOverLimit ? 'bg-red-500/10' : 'bg-black/5 shadow-inner') : ''}
                             `}
                         >
                             {items.map((item, idx) => (
@@ -212,6 +237,11 @@ const KanbanBoard = () => {
                         </div>
                     )}
                 </Droppable>
+
+                {/* 2. TWARDA PRZERWA NA DOLE (Spacer o wys. połowy taska) */}
+                {/* Jest całkowicie poza strefą Droppable, więc biblioteka DnD go ignoruje i nie robi błędów,
+                    ale wizualnie GWARANTUJE, że komórka zawsze jest wyższa o te 45px! */}
+                <div className="h-[45px] w-full flex-shrink-0 pointer-events-none" />
             </div>
         );
     };
@@ -228,7 +258,7 @@ const KanbanBoard = () => {
                             <div className="w-56 flex-shrink-0 border-r-2 border-gray-200 p-6 bg-gray-50 flex items-center justify-center">
                                 <button onClick={() => {
                                     setEntityModal({ isOpen: true, mode: 'add', type: 'row' });
-                                    setEntityEditData({ title: '', color: '#ffffff' });
+                                    setEntityEditData({ title: '', color: '#ffffff', limit: 0 });
                                 }} className="w-full py-3 flex items-center justify-center bg-white border-2 border-dashed border-gray-300 rounded-xl hover:bg-gray-100 text-gray-500 font-bold text-sm gap-2 transition-colors" title="Add new row">
                                     <Plus size={18}/> Add Row
                                 </button>
@@ -238,7 +268,7 @@ const KanbanBoard = () => {
                                 <div 
                                     onDoubleClick={() => {
                                         setEntityModal({ isOpen: true, mode: 'edit', type: 'column', item: backlogColumn });
-                                        setEntityEditData({ title: backlogColumn.title, color: '#ffffff' });
+                                        setEntityEditData({ title: backlogColumn.title, color: '#ffffff', limit: 0 });
                                     }}
                                     className="w-[360px] flex-shrink-0 border-r-2 border-dashed p-6 flex items-center justify-center transition-colors select-none cursor-pointer hover:bg-gray-50"
                                     style={{ borderColor: '#d1d5db', backgroundColor: 'transparent' }}
@@ -251,33 +281,46 @@ const KanbanBoard = () => {
                             <Droppable droppableId="board-columns" direction="horizontal" type="column">
                                 {(provided) => (
                                     <div ref={provided.innerRef} {...provided.droppableProps} className="flex h-full">
-                                        {draggableColumns.map((col, index) => (
-                                            <Draggable key={`col-${col.id}`} draggableId={`col-${col.id}`} index={index}>
-                                                {(provided, snapshot) => (
-                                                    <div 
-                                                        ref={provided.innerRef}
-                                                        {...provided.draggableProps}
-                                                        {...provided.dragHandleProps}
-                                                        onDoubleClick={() => {
-                                                            setEntityModal({ isOpen: true, mode: 'edit', type: 'column', item: col });
-                                                            setEntityEditData({ title: col.title, color: col.color || '#ffffff' });
-                                                        }}
-                                                        // ZMIANA: Usunięto transition-all i scale, dodano tylko transition-shadow i transition-colors
-                                                        className={`w-[360px] flex-shrink-0 border-r-2 p-6 flex items-center justify-center select-none cursor-grab active:cursor-grabbing hover:brightness-95 transition-shadow transition-colors
-                                                            ${snapshot.isDragging ? 'z-50 shadow-2xl ring-2 ring-purple-500 border-none rounded-xl' : ''}
-                                                        `}
-                                                        style={{ 
-                                                            backgroundColor: col.color || '#ffffff',
-                                                            borderColor: col.color && col.color !== '#ffffff' ? col.color : '#e5e7eb',
-                                                            ...provided.draggableProps.style
-                                                        }}
-                                                        title="Drag to reorder, Double-click to edit"
-                                                    >
-                                                        <h3 className="font-black text-sm tracking-widest uppercase text-center w-full truncate text-gray-900">{col.title}</h3>
-                                                    </div>
-                                                )}
-                                            </Draggable>
-                                        ))}
+                                        {draggableColumns.map((col, index) => {
+                                            const isOverLimit = col.limit > 0 && col.items.length > col.limit;
+                                            
+                                            return (
+                                                <Draggable key={`col-${col.id}`} draggableId={`col-${col.id}`} index={index}>
+                                                    {(provided, snapshot) => (
+                                                        <div 
+                                                            ref={provided.innerRef}
+                                                            {...provided.draggableProps}
+                                                            {...provided.dragHandleProps}
+                                                            onDoubleClick={() => {
+                                                                setEntityModal({ isOpen: true, mode: 'edit', type: 'column', item: col });
+                                                                setEntityEditData({ title: col.title, color: col.color || '#ffffff', limit: col.limit || 0 });
+                                                            }}
+                                                            className={`w-[360px] flex-shrink-0 border-r-2 p-6 flex items-center justify-center select-none cursor-grab active:cursor-grabbing hover:brightness-95 transition-shadow transition-colors
+                                                                ${snapshot.isDragging ? 'z-50 shadow-2xl ring-2 ring-purple-500 border-none rounded-xl' : ''}
+                                                                ${isOverLimit ? 'ring-inset ring-2 ring-red-500 z-10' : ''}
+                                                            `}
+                                                            style={{ 
+                                                                backgroundColor: isOverLimit ? '#fef2f2' : (col.color || '#ffffff'),
+                                                                borderColor: isOverLimit ? '#ef4444' : (col.color && col.color !== '#ffffff' ? col.color : '#e5e7eb'),
+                                                                ...provided.draggableProps.style
+                                                            }}
+                                                            title="Drag to reorder, Double-click to edit"
+                                                        >
+                                                            <div className="flex flex-col items-center justify-center w-full">
+                                                                <h3 className={`font-black text-sm tracking-widest uppercase text-center w-full truncate px-3 ${isOverLimit ? 'text-red-600' : 'text-gray-900'}`}>
+                                                                    {col.title}
+                                                                </h3>
+                                                                {col.limit > 0 && (
+                                                                    <span className={`text-[10px] font-bold mt-1 px-2 py-0.5 rounded-full border ${isOverLimit ? 'bg-red-100 text-red-700 border-red-200' : 'bg-gray-100/80 text-gray-500 border-gray-200'}`}>
+                                                                        WIP: {col.items.length} / {col.limit}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </Draggable>
+                                            );
+                                        })}
                                         {provided.placeholder}
                                     </div>
                                 )}
@@ -286,17 +329,17 @@ const KanbanBoard = () => {
                             <div className="flex-1 min-w-[120px] p-6 flex items-center justify-center bg-white border-b-2 border-transparent">
                                 <button onClick={() => {
                                     setEntityModal({ isOpen: true, mode: 'add', type: 'column' });
-                                    setEntityEditData({ title: '', color: '#ffffff' });
+                                    setEntityEditData({ title: '', color: '#ffffff', limit: 0 });
                                 }} className="w-12 h-12 flex items-center justify-center bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors" title="Add new column">
                                     <Plus size={20}/>
                                 </button>
                             </div>
                         </div>
 
-                        {/* --- UNASSIGNED ROW --- */}
+                        {/* --- UNLABELED ROW --- */}
                         <div className="flex relative border-b-2 border-gray-200 bg-white">
                             <div className="w-56 flex-shrink-0 border-r-2 border-gray-200 p-6 flex flex-col items-center justify-center text-center bg-gray-50/50">
-                                <span className="font-black text-sm uppercase tracking-widest text-gray-400">Unassigned</span>
+                                <span className="font-black text-sm uppercase tracking-widest text-gray-400">Unlabeled</span>
                             </div>
                             
                             {backlogColumn && renderCell(backlogColumn, null, true, '#ffffff')}
@@ -315,7 +358,6 @@ const KanbanBoard = () => {
                                                 <div 
                                                     ref={provided.innerRef}
                                                     {...provided.draggableProps}
-                                                    // ZMIANA: Usunięto transition-all i scale
                                                     className={`flex relative border-b-2 border-gray-200 transition-shadow transition-colors
                                                         ${snapshot.isDragging ? 'z-50 ring-4 ring-purple-500 shadow-2xl bg-white rounded-xl overflow-hidden' : ''}
                                                     `}
@@ -326,7 +368,7 @@ const KanbanBoard = () => {
                                                         {...provided.dragHandleProps}
                                                         onDoubleClick={() => {
                                                             setEntityModal({ isOpen: true, mode: 'edit', type: 'row', item: row });
-                                                            setEntityEditData({ title: row.title, color: row.color || '#ffffff' });
+                                                            setEntityEditData({ title: row.title, color: row.color || '#ffffff', limit: 0 });
                                                         }}
                                                         className="w-56 flex-shrink-0 border-r-2 border-gray-200 p-6 flex flex-col items-center justify-center text-center cursor-grab active:cursor-grabbing hover:brightness-95 transition-colors select-none"
                                                         style={{ backgroundColor: row.color || '#ffffff' }}
@@ -425,6 +467,23 @@ const KanbanBoard = () => {
                                     />
                                 )}
                             </div>
+
+                            {/* POLE WYBORU LIMITU WIP DLA KOLUMNY */}
+                            {entityModal.type === 'column' && !isBacklogModal && (
+                                <div>
+                                    <label className="block font-bold uppercase tracking-wider mb-2.5 text-xs text-gray-500">WIP Limit</label>
+                                    <select
+                                        className="w-full text-sm p-4 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-colors shadow-inner cursor-pointer"
+                                        value={entityEditData.limit || 0}
+                                        onChange={(e) => setEntityEditData({...entityEditData, limit: parseInt(e.target.value)})}
+                                    >
+                                        <option value={0}>None (No limit)</option>
+                                        {[...Array(20)].map((_, i) => (
+                                            <option key={i + 1} value={i + 1}>{i + 1}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
 
                             <div>
                                 <label className="block font-bold uppercase tracking-wider mb-2.5 text-xs text-gray-500">Background Color</label>
@@ -578,7 +637,7 @@ const KanbanBoard = () => {
                                     <select 
                                         className="w-full text-sm p-3 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-purple-200 cursor-pointer"
                                         value={targetMoveId}
-                                        onChange={(e) => setTargetMoveId(e.target.value === 'unassigned' ? 'unassigned' : parseInt(e.target.value))}
+                                        onChange={(e) => setTargetMoveId(e.target.value === 'unlabeled' ? 'unlabeled' : parseInt(e.target.value))}
                                     >
                                         {deletePrompt.type === 'column' ? (
                                             columns.filter(c => c.id !== deletePrompt.id).map(c => (
@@ -586,7 +645,7 @@ const KanbanBoard = () => {
                                             ))
                                         ) : (
                                             <>
-                                                <option value="unassigned">Unassigned zone</option>
+                                                <option value="unlabeled">Unlabeled zone</option>
                                                 {rows.filter(r => r.id !== deletePrompt.id).map(r => (
                                                     <option key={r.id} value={r.id}>{r.title}</option>
                                                 ))}
@@ -595,13 +654,13 @@ const KanbanBoard = () => {
                                     </select>
                                     <button onClick={() => {
                                         if (deletePrompt.type === 'column') {
-                                            if (targetMoveId === 'unassigned') {
+                                            if (targetMoveId === 'unlabeled') {
                                                 alert("You must select another column to move the tasks to.");
                                                 return;
                                             }
                                             removeColumn(deletePrompt.id, 'move_tasks', targetMoveId as number);
                                         } else {
-                                            const targetRowId = targetMoveId === 'unassigned' ? null : (targetMoveId as number);
+                                            const targetRowId = targetMoveId === 'unlabeled' ? null : (targetMoveId as number);
                                             removeRow(deletePrompt.id, 'move_tasks', targetRowId as any);
                                         }
                                         setDeletePrompt(null);

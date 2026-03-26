@@ -3,7 +3,6 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import client from '../api/client';
 import { jwtDecode } from 'jwt-decode';
 
-// Dokładne odzwierciedlenie tego, co zwraca backend w polu 'user'
 interface User {
   id: number;
   fullName: string;
@@ -34,14 +33,10 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await client.post('/auth/login', { email, password });
-          
-          // Oczekujemy struktury: { access_token: string, user: User }
           const { access_token, user } = response.data;
 
-          // Zapisujemy token, aby axios interceptor go widział
           localStorage.setItem('token', access_token);
 
-          // Dekodujemy rolę z tokena (bezpieczniej niż przesyłanie jej w jawnym JSON-ie odpowiedzi)
           const decoded: any = jwtDecode(access_token);
           const userWithRole = { ...user, role: decoded.role };
 
@@ -52,9 +47,7 @@ export const useAuthStore = create<AuthState>()(
           });
         } catch (err: any) {
           console.error('Login error:', err);
-          // Pobieramy wiadomość błędu z backendu (NestJS rzuca message w body)
-          const errorMessage = err.response?.data?.message || 'Wystąpił błąd podczas logowania.';
-          // Jeśli message jest tablicą (np. z class-validator), łączymy ją
+          const errorMessage = err.response?.data?.message || 'An error occurred during login.';
           const finalMessage = Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage;
 
           set({ 
@@ -62,7 +55,6 @@ export const useAuthStore = create<AuthState>()(
             error: finalMessage 
           });
           
-          // Rzucamy błąd dalej, jeśli komponent chce zareagować (opcjonalne)
           throw err;
         }
       },
@@ -70,7 +62,6 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         localStorage.removeItem('token');
         set({ isLogged: false, user: null, error: null });
-        // Hard redirect dla bezpieczeństwa (czyści pamięć JS)
         window.location.href = '/login';
       },
 
@@ -79,7 +70,6 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => localStorage),
-      // Nie chcemy persystować stanu ładowania ani błędów
       partialize: (state) => ({ 
         isLogged: state.isLogged, 
         user: state.user 
