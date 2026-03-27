@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { LogOut, Menu, X, LayoutDashboard, Users } from 'lucide-react';
+import { LogOut, Menu, X, LayoutDashboard, Settings } from 'lucide-react';
 
 interface User {
   fullName: string;
@@ -25,66 +25,100 @@ const DashboardLayout = ({ user }: { user: User }) => {
   return (
     <div className="flex h-screen bg-gray-50 text-gray-800 font-sans overflow-hidden">
       
+      {/* Tło zaciemniające */}
       {isSidebarOpen && (
-         <div className="fixed inset-0 bg-black/20 z-40 transition-opacity cursor-pointer" onClick={() => setIsSidebarOpen(false)} />
+         <div className="fixed inset-0 bg-black/20 z-[70] transition-opacity cursor-pointer" onClick={() => setIsSidebarOpen(false)} />
       )}
 
-      {/* --- SIDEBAR --- */}
-      <aside className={`fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 flex flex-col z-50 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
+      {/* =========================================================================
+          1. SZEROKOŚĆ SIDEBARA (LEWEGO PANELU)
+          Właściwość: width
+          Zmień '320px' na dowolną szerokość, np. '350px' lub '400px'
+          ========================================================================= */}
+      <aside 
+         style={{ width: '320px' }} 
+         className={`fixed inset-y-0 left-0 bg-white border-r border-gray-200 flex flex-col z-[80] transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}
+      >
          
-         <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200 flex-shrink-0">
-            <span className="font-black text-xl tracking-widest text-purple-600">CANBAN</span>
-            <button className="p-2 -mr-2 text-gray-400 hover:text-gray-600 rounded-xl transition-colors" onClick={() => setIsSidebarOpen(false)}>
-                <X size={20}/>
+         {/* =========================================================================
+             2. GÓRNY PASEK SIDEBARA (Napis KANBAN i Krzyżyk)
+             Właściwość: paddingLeft (odsuwa napis KANBAN od lewej)
+             Właściwość: paddingRight (odsuwa krzyżyk od prawej)
+             Zmień '40px' na '80px', by przesunąć KANBAN mocno w prawo.
+             ========================================================================= */}
+         <div 
+            style={{ paddingLeft: '20px', paddingRight: '20px' }} 
+            className="h-16 flex items-center justify-between border-b border-gray-200 flex-shrink-0"
+         >
+            <span className="font-black text-xl tracking-widest text-purple-600">KANBAN</span>
+            <button className="p-3 text-gray-300 hover:text-gray-400 transition-colors" onClick={() => setIsSidebarOpen(false)}>
+                <X size={35}/>
             </button>
          </div>
          
-         <div className="p-6 border-b border-gray-100 flex items-center gap-3 flex-shrink-0">
-             <div className="w-10 h-10 rounded-full bg-purple-100 flex flex-shrink-0 items-center justify-center text-purple-700 font-bold text-lg shadow-sm">
-               {user.fullName ? user.fullName.substring(0, 2).toUpperCase() : 'U'}
-             </div>
-             <div className="flex flex-col text-sm overflow-hidden">
-                 <span className="font-bold text-gray-800 truncate">{user.fullName}</span>
-                 <span className="text-xs text-gray-500 font-medium truncate">{user.role}</span>
-             </div>
-         </div>
-
          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+            {/* =========================================================================
+                3. PRZYCISKI W MENU (Wielkość i marginesy)
+                Właściwość: padding (góra/dół, prawo/lewo)
+                Zmień padding: '16px 20px' na '20px 30px' aby były większe.
+                ========================================================================= */}
             <button 
+               style={{ padding: '12px 20px' }}
                onClick={() => { navigate('/kanban'); setIsSidebarOpen(false); }}
-               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors ${isKanban ? 'bg-purple-50 text-purple-700' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}
+               className={`w-full flex items-center gap-3 font-bold transition-colors ${isKanban ? 'bg-purple-50 text-purple-700' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}
             >
-               <LayoutDashboard size={20} /> Kanban Board
+               <LayoutDashboard size={30} /> Kanban Board
             </button>
+
             {user.role === 'ADMINISTRATOR' && (
                 <button 
+                   style={{ padding: '12px 20px' }}
                    onClick={() => { navigate('/users'); setIsSidebarOpen(false); }}
-                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors ${!isKanban ? 'bg-purple-50 text-purple-700' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}
+                   className={`w-full flex items-center gap-3 font-bold transition-colors ${!isKanban ? 'bg-purple-50 text-purple-700' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}
                 >
-                   <Users size={20} /> User Management
+                   <Settings size={30} /> Settings
                 </button>
             )}
          </nav>
 
-         <div className="p-4 border-t border-gray-200 flex-shrink-0">
-            <button 
-               onClick={handleLogout}
-               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
-            >
-               <LogOut size={20} /> Logout
-            </button>
+         {/* PANEL UŻYTKOWNIKA (Avatarek i Wylogowanie na dole) */}
+         <div className="p-9 border-gray-200 flex items-stretch flex-shrink-0 bg-white">
+             <div className="flex-1 flex items-center gap-3 bg-gray-50 p-2 border border-gray-100 overflow-hidden">
+                 <div className="w-20 h-20 bg-purple-100 flex flex-shrink-0 items-center justify-center text-purple-700 font-bold text-lg shadow-sm">
+                   {user.fullName ? user.fullName.substring(0, 2).toUpperCase() : 'U'}
+                 </div>
+                 <div className="border-gray-200 flex flex-col text-sm overflow-hidden">
+                     <span className="font-bold text-gray-800 truncate">{user.fullName}</span>
+                     <span className="text-xs text-gray-500 font-medium truncate">{user.role}</span>
+                 </div>
+             </div>
+             
+             <button 
+                 onClick={handleLogout}
+                 className="border-gray-200 flex-shrink-0 flex items-center justify-center w-20 font-bold text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors border border-transparent hover:border-red-100"
+                 title="Logout"
+             >
+                 <LogOut size={20} />
+             </button>
          </div>
       </aside>
 
-      {/* --- MAIN CONTENT AREA --- */}
-      <div className="flex-1 flex flex-col min-w-0 relative">
-         <header className="h-16 flex items-center justify-between px-6 bg-white border-b border-gray-200 flex-shrink-0">
-             <div className="flex items-center gap-4">
-                 {/* --- NOWY, ŁADNY PRZYCISK HAMBURGERA --- */}
+      <div className="flex-1 flex flex-col min-w-0 relative z-0">
+         
+         {/* =========================================================================
+             4. GŁÓWNY GÓRNY PASEK APLIKACJI (Hamburger i Tytuł)
+             Właściwość: paddingLeft (odsuwa Hamburgera od lewej krawędzi)
+             Zmień '50px' na np. '80px', aby przesunąć go bliżej środka ekranu.
+             ========================================================================= */}
+         <header 
+            style={{ paddingLeft: '15px', paddingRight: '30px' }} 
+            className="h-20 flex items-center justify-between bg-white border-b border-gray-200 flex-shrink-0"
+         >
+             <div className="flex items-center gap-6">
                  <button onClick={() => setIsSidebarOpen(true)} className="flex items-center justify-center w-10 h-10 border-2 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-purple-600 rounded-xl transition-all shadow-sm">
                     <Menu size={22} />
                  </button>
-                 <h1 className="font-bold text-lg text-gray-800">{isKanban ? 'Kanban Board' : 'User Management'}</h1>
+                 <h1 className="font-bold text-lg text-gray-800">{isKanban ? 'Kanban Board' : 'Settings'}</h1>
              </div>
          </header>
          

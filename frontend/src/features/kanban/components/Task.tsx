@@ -75,7 +75,6 @@ const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClic
                     }}
                 >
                     <div className="flex items-center justify-center flex-1 px-1 mb-2 w-full text-center pointer-events-none relative z-20">
-                        {/* Wyświetlamy dokładnie item.title z bazy */}
                         <p className="text-[13px] font-extrabold text-gray-900 break-words leading-tight tracking-tight select-none w-full">
                             {item.title || "Untitled Task"}
                         </p>
@@ -97,7 +96,7 @@ const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClic
                     </div>
 
                     <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 pl-8">
-                        <span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full backdrop-blur-sm">Double click for details</span>
+                        <span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full backdrop-blur-sm">Double click to edit</span>
                     </div>
                 </div>
             )}

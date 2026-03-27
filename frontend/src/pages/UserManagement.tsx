@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useUserStore, User } from '../store/useUserStore';
 import { useKanbanStore } from '../store/useKanbanStore';
-import { Trash2, UserCog, UserPlus, X, Save, Key, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { Trash2, UserPlus, X, Key, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 
 const UserManagement = () => {
   const { users, fetchUsers, createUser, updateUserRole, updateUserPassword, deleteUser, isLoading, error } = useUserStore();
@@ -33,7 +33,7 @@ const UserManagement = () => {
   };
 
   const handleDeleteUser = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
+    if (window.confirm('Are you sure you want to completely remove this user from the system?')) {
       await deleteUser(id);
     }
   };
@@ -74,15 +74,16 @@ const UserManagement = () => {
     <div className="flex h-full flex-col bg-gray-50 p-8 overflow-y-auto">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">User Management</h1>
-          <p className="text-gray-500 mt-1">Add, remove, and edit user permissions.</p>
+          {/* ZMIANA: Tytuł zmieniony na Settings */}
+          <h1 className="text-3xl font-bold text-gray-800">Settings</h1>
+          <p className="text-gray-500 mt-1">Manage global users and board access.</p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 rounded-xl bg-purple-600 px-5 py-3 font-semibold text-white shadow-lg transition-all hover:bg-purple-700 hover:shadow-purple-200"
         >
           <UserPlus size={20} />
-          New User
+          Add User
         </button>
       </div>
 
@@ -96,7 +97,7 @@ const UserManagement = () => {
         <table className="w-full text-left text-sm text-gray-600">
           <thead className="bg-gray-100 text-xs uppercase text-gray-500 font-bold border-b border-gray-200">
             <tr>
-              <th className="px-6 py-4">ID</th>
+              {/* ZMIANA: Usunięto <th>ID</th> */}
               <th className="px-6 py-4">Full Name</th>
               <th className="px-6 py-4">Email</th>
               <th className="px-6 py-4">Tasks</th>
@@ -106,13 +107,12 @@ const UserManagement = () => {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {users.map((user) => {
-              // POPRAWIONE DYNAMICZNE LICZENIE ZADAŃ Z FRONTENDU
               const taskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === user.id).length;
               const isOverLimit = taskCount >= 5;
 
               return (
               <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 font-mono text-gray-400">#{user.id}</td>
+                {/* ZMIANA: Usunięto komórkę z ID */}
                 <td className="px-6 py-4 font-bold text-gray-800">{user.fullName}</td>
                 <td className="px-6 py-4 text-gray-600">{user.email}</td>
                 <td className="px-6 py-4">
@@ -158,7 +158,7 @@ const UserManagement = () => {
             )})}
             {users.length === 0 && !isLoading && (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-400 italic">
+                <td colSpan={5} className="px-6 py-8 text-center text-gray-400 italic">
                   No users to display.
                 </td>
               </tr>
@@ -242,7 +242,7 @@ const UserManagement = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-800">Add User</h2>
+              <h2 className="text-xl font-bold text-gray-800">Add User Manually</h2>
               <button 
                 onClick={() => setIsModalOpen(false)}
                 className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
