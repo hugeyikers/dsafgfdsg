@@ -13,18 +13,23 @@ interface UserState {
   users: User[];
   isLoading: boolean;
   error: string | null;
+  maxTasksPerUser: number; // <-- Globalny limit zadań
   
   fetchUsers: () => Promise<void>;
   createUser: (userData: Omit<User, 'id' | 'createdAt'> & { password?: string }) => Promise<void>;
   updateUserRole: (id: number, role: 'ADMINISTRATOR' | 'USER') => Promise<void>;
   updateUserPassword: (id: number, password: string) => Promise<void>;
   deleteUser: (id: number) => Promise<void>;
+  setMaxTasksPerUser: (limit: number) => void; // <-- Akcja do zmiany limitu
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
   users: [],
   isLoading: false,
   error: null,
+  maxTasksPerUser: 5, // Domyślna wartość globalnego limitu
+
+  setMaxTasksPerUser: (limit: number) => set({ maxTasksPerUser: limit }),
 
   fetchUsers: async () => {
     set({ isLoading: true, error: null });

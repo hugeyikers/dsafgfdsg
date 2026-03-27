@@ -3,7 +3,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useKanbanStore } from '../../store/useKanbanStore';
 import { useUserStore } from '../../store/useUserStore';
 import Task from './components/Task';
-import { Plus, Trash2, X, Save, Ban, Users, Edit3, LayoutPanelLeft } from 'lucide-react';
+import { Plus, Trash2, X, Save, Users, LayoutPanelLeft } from 'lucide-react';
 
 type PanelType = 'task' | 'column' | 'row';
 type PanelMode = 'view' | 'add'; 
@@ -17,7 +17,7 @@ const SIDEBAR_RIGHT_PADDING = 20;
 const SIDEBAR_CONTENT_WIDTH = 360; 
 const SIDEBAR_WIDTH = SIDEBAR_CONTENT_WIDTH + SIDEBAR_LEFT_PADDING + SIDEBAR_RIGHT_PADDING; 
 
-const USERS_SIDEBAR_WIDTH = 320; // Szerokość prawego panelu z użytkownikami
+const USERS_SIDEBAR_WIDTH = 90; // Zminiaturyzowany panel użytkowników
 
 const FOOTER_HEIGHT = 80;  
 
@@ -29,7 +29,9 @@ const DETAILS_FIELD_RADIUS = '5px';
 
 const KanbanBoard = () => {
     const { columns, rows, fetchBoard, addColumn, addRow, moveItem, removeColumn, removeRow, updateColumn, updateRow, addItem, reorderColumns, reorderRows, removeItem, updateItem } = useKanbanStore();
-    const { fetchUsers, users } = useUserStore();
+    
+    // WYCIĄGAMY GLOBALNY LIMIT ZADAŃ ZE STORE'A
+    const { fetchUsers, users, maxTasksPerUser } = useUserStore();
     
     const [dragState, setDragState] = useState<{ isDragging: boolean; type: string | null }>({ isDragging: false, type: null });
     const [showTrash, setShowTrash] = useState(false);
@@ -40,6 +42,9 @@ const KanbanBoard = () => {
     
     const [showUsersBar, setShowUsersBar] = useState(false);
     const [filteredUserIds, setFilteredUserIds] = useState<number[]>([]);
+    
+    // Globalny tooltip userów (zawieszony na ekranie, żeby go nie ucinało)
+    const [userTooltip, setUserTooltip] = useState<{id: number, name: string, top: number} | null>(null);
 
     const leftSidebarRef = useRef<HTMLDivElement>(null);
     const rightSidebarRef = useRef<HTMLDivElement>(null);
@@ -57,29 +62,6 @@ const KanbanBoard = () => {
         fetchBoard();
         fetchUsers();
     }, []);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (!panel.isOpen && !showUsersBar) return;
-            const target = event.target as Node;
-            
-            if (leftSidebarRef.current?.contains(target)) return;
-            if (rightSidebarRef.current?.contains(target)) return;
-
-            const boardContainer = document.getElementById('kanban-board-container');
-            if (boardContainer?.contains(target)) return;
-            
-            if ((target as HTMLElement).closest('.btn-toggle-users')) return;
-            
-            if (!document.body.contains(target)) return;
-
-            setPanel(prev => ({ ...prev, isOpen: false }));
-            setShowUsersBar(false);
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [panel.isOpen, showUsersBar]);
 
     useEffect(() => {
         if (!panel.isOpen) {
@@ -144,6 +126,16 @@ const KanbanBoard = () => {
         
         if (typeof finalValue === 'string') finalValue = finalValue.trim();
         if (activeField === 'content' && finalValue === '') finalValue = 'none';
+
+        // Ochrona limitu przy zmianie Assignee w panelu
+        if (panel.type === 'task' && activeField === 'assignedToId' && finalValue) {
+            const userTaskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === finalValue && i.id !== id).length;
+            if (userTaskCount >= maxTasksPerUser) {
+                alert(`USER LIMIT EXCEEDED!\n\nA maximum of ${maxTasksPerUser} tasks per user is allowed.`);
+                cancelEdit();
+                return;
+            }
+        }
 
         try {
             if (panel.type === 'task') {
@@ -306,8 +298,8 @@ const KanbanBoard = () => {
 
             if (formData.assignedToId) {
                 const userTaskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === formData.assignedToId).length;
-                if (userTaskCount >= 5) {
-                    alert(`USER LIMIT EXCEEDED!\n\nA maximum of 5 tasks per user is allowed.`);
+                if (userTaskCount >= maxTasksPerUser) {
+                    alert(`USER LIMIT EXCEEDED!\n\nA maximum of ${maxTasksPerUser} tasks per user is allowed.`);
                     return; 
                 }
             }
@@ -366,6 +358,7 @@ const KanbanBoard = () => {
         }
     };
 
+    // SYSTEM LIVE PREVIEW KOLORÓW DLA TABLICY
     const getItems = (colId: number, rowId: number | null) => {
         const col = columns.find(c => c.id === colId);
         if (!col) return [];
@@ -444,6 +437,35 @@ const KanbanBoard = () => {
     return (
         <div className="h-full flex w-full bg-gray-50 relative overflow-hidden">
             
+            {/* GLOBALNY TOOLTIP UŻYTKOWNIKÓW (Zawieszony na ekranie) */}
+            {userTooltip && (
+                <div 
+                    className="fixed z-[9999] whitespace-nowrap bg-gray-800 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-md pointer-events-none transition-opacity"
+                    style={{ 
+                        top: `${userTooltip.top + 10}px`, 
+                        right: showUsersBar ? `${USERS_SIDEBAR_WIDTH + 15}px` : '55px' 
+                    }}
+                >
+                    {userTooltip.name}
+                </div>
+            )}
+
+            {/* --- ZAKŁADKA DO WYSUWANIA SIDEBARA USERÓW (Wprawiona w prawy górny róg ekranu na stałe) --- */}
+            <button
+                onClick={() => setShowUsersBar(!showUsersBar)}
+                style={{ right: showUsersBar ? `${USERS_SIDEBAR_WIDTH}px` : '0px' }}
+                className="absolute top-0 z-[100] flex items-center justify-center w-10 h-10 transition-all duration-300 ease-in-out bg-white text-gray-500 hover:text-blue-600 hover:bg-blue-50 shadow-sm outline-none rounded-l-xl border-y-2 border-l-2 border-r-0 border-gray-200"
+                title="Toggle Team Panel"
+            >
+                <div className={`transition-transform duration-300 ${showUsersBar ? 'rotate-180' : ''}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="15" y1="3" x2="15" y2="21"></line>
+                        <polyline points="10 15 7 12 10 9"></polyline>
+                    </svg>
+                </div>
+            </button>
+
             {/* --- LEWY SIDEBAR EDYCJI I PODGLĄDU --- */}
             <aside 
                 ref={leftSidebarRef}
@@ -923,41 +945,23 @@ const KanbanBoard = () => {
                 </DragDropContext>
             </div>
 
-            {/* --- PRAWY SIDEBAR USERÓW --- */}
-            {/* PRZYCISK TOGGLE W HEADERZE */}
-            {!showUsersBar && (
-                <button
-                    onClick={() => setShowUsersBar(true)}
-                    className="btn-toggle-users fixed top-4 right-6 z-[100] group relative flex items-center justify-center w-10 h-10 rounded-xl transition-colors border-2 shadow-sm bg-white border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-300"
-                >
-                    <Users size={22} />
-                    <div className="absolute -bottom-8 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none bg-gray-800 text-white text-[10px] px-2 py-1 rounded">
-                        Assign Users
-                    </div>
-                </button>
-            )}
-
-            {/* WYSUWANY PANEL USERÓW */}
+            {/* --- PRAWY SIDEBAR USERÓW (MINIATUROWY) --- */}
             <aside 
                 ref={rightSidebarRef}
-                style={{ width: showUsersBar ? `${USERS_SIDEBAR_WIDTH}px` : '0px' }}
-                className={`flex flex-col bg-white transition-all duration-300 ease-in-out z-40 overflow-hidden ${showUsersBar ? 'border-l border-gray-200 shadow-[-20px_0_40px_rgba(0,0,0,0.05)]' : 'border-none shadow-none'}`}
+                style={{ 
+                    width: showUsersBar ? `${USERS_SIDEBAR_WIDTH}px` : '0px',
+                    minWidth: showUsersBar ? `${USERS_SIDEBAR_WIDTH}px` : '0px',
+                    opacity: showUsersBar ? 1 : 0
+                }}
+                className={`flex-shrink-0 flex flex-col bg-white transition-all duration-300 ease-in-out z-40 overflow-visible ${showUsersBar ? 'border-l-2 border-gray-200 shadow-[-20px_0_40px_rgba(0,0,0,0.05)]' : ''}`}
             >
-                <div style={{ width: `${USERS_SIDEBAR_WIDTH}px` }} className="flex flex-col h-full bg-gray-50/30">
-                    <div style={{ height: 60, background: '#d9d9d9' }} className="flex font-black items-center justify-between px-6 border-b border-gray-100 flex-shrink-0">
-                        <h3 className="text-lg text-gray-900 uppercase tracking-widest flex items-center gap-2">
-                            <Users className="text-blue-500" size={20}/>
-                            Team
-                        </h3>
-                        <button onClick={() => setShowUsersBar(false)} className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors">
-                            <X size={25}/>
-                        </button>
-                    </div>
+                <div style={{ width: `${USERS_SIDEBAR_WIDTH}px` }} className="flex flex-col h-full bg-gray-50/30 overflow-hidden">
                     
-                    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+                    {/* ZMINIATURYZOWANI UŻYTKOWNICY */}
+                    <div className="flex-1 overflow-y-auto pt-6 pb-4 flex flex-col items-center gap-5">
                         {users.map(u => {
                             const taskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === u.id).length;
-                            const isOverLimit = taskCount >= 5;
+                            const isOverLimit = taskCount >= maxTasksPerUser;
                             const isFiltered = filteredUserIds.includes(u.id);
                             const isAnyFilterActive = filteredUserIds.length > 0;
                             const isDimmed = isAnyFilterActive && !isFiltered;
@@ -965,9 +969,12 @@ const KanbanBoard = () => {
                             return (
                                 <div
                                     key={u.id}
+                                    draggable={false} 
                                     onClick={() => setFilteredUserIds(prev => prev.includes(u.id) ? prev.filter(id => id !== u.id) : [...prev, u.id])}
                                     onDoubleClick={(e) => { e.stopPropagation(); setFilteredUserIds([u.id]); }}
-                                    className={`group relative flex items-center gap-3 p-1.5 pr-4 rounded-full border-2 transition-all shadow-sm bg-white cursor-pointer ${isFiltered ? 'border-blue-500 ring-2 ring-blue-500/20' : isOverLimit ? 'border-gray-200 bg-gray-50 opacity-50' : 'border-gray-100 hover:border-blue-300'} ${isDimmed ? 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0' : ''}`}
+                                    onMouseEnter={(e) => setUserTooltip({ id: u.id, name: u.fullName, top: e.currentTarget.getBoundingClientRect().top })}
+                                    onMouseLeave={() => setUserTooltip(null)}
+                                    className={`group relative flex flex-col items-center gap-1 transition-all select-none cursor-pointer ${isDimmed ? 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0' : ''}`}
                                 >
                                     <div 
                                         draggable={!isOverLimit}
@@ -975,28 +982,22 @@ const KanbanBoard = () => {
                                             e.stopPropagation(); 
                                             e.dataTransfer.setData('text/plain', u.id.toString()); 
                                             e.dataTransfer.effectAllowed = 'copy'; 
+                                            setUserTooltip(null);
                                         }}
-                                        className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shadow-inner flex-shrink-0 ${!isOverLimit ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed'} ${isFiltered ? 'bg-blue-100 text-blue-700' : isOverLimit ? 'bg-gray-200 text-gray-500' : 'bg-gray-100 text-gray-600 hover:bg-blue-50'}`}
-                                        title={!isOverLimit ? "Drag to assign" : "Task limit reached"}
+                                        className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-base shadow-sm border-2 ${!isOverLimit ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed'} ${isFiltered ? 'bg-blue-100 text-blue-700 border-blue-500 ring-4 ring-blue-500/20' : isOverLimit ? 'bg-gray-200 text-gray-500 border-gray-300' : 'bg-white text-gray-700 border-gray-200 hover:border-blue-400 hover:-translate-y-1 hover:shadow-md transition-all'}`}
                                     >
                                         {u.fullName.substring(0, 2).toUpperCase()}
                                     </div>
-                                    <div className="flex flex-col flex-1 overflow-hidden">
-                                        <span className="font-bold text-sm text-gray-800 truncate">{u.fullName}</span>
-                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${isOverLimit ? 'text-gray-400' : 'text-gray-400'}`}>
-                                            {taskCount}/5 Tasks
-                                        </span>
-                                    </div>
-                                    <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none bg-gray-800 text-white text-[10px] px-2 py-1 rounded z-50">
-                                        {isFiltered ? `Remove filter` : `Filter / Drag to assign`}
-                                    </div>
+                                    <span className={`text-[10px] font-black ${isOverLimit ? 'text-gray-400' : 'text-gray-500'}`}>
+                                        {taskCount}/{maxTasksPerUser}
+                                    </span>
                                 </div>
                             );
                         })}
-                        {users.length === 0 && <span className="text-sm text-gray-400 italic bg-white px-3 py-1 rounded-lg border border-gray-200 shadow-sm">No users</span>}
+                        {users.length === 0 && <span className="text-[10px] text-gray-400 italic">No users</span>}
                         {filteredUserIds.length > 0 && (
-                            <button onClick={() => setFilteredUserIds([])} className="flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider bg-red-50 text-red-600 p-3 rounded-xl border border-red-200 hover:bg-red-100 transition-colors shadow-sm mt-2">
-                                <X size={16} /> Clear Filters
+                            <button onClick={() => setFilteredUserIds([])} className="flex items-center justify-center mt-2 text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Clear Filters">
+                                <X size={20} />
                             </button>
                         )}
                     </div>
