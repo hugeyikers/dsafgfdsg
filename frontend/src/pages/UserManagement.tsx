@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useUserStore, User } from '../store/useUserStore';     // <--- Zmiana z ../../ na ../
-import { useKanbanStore } from '../store/useKanbanStore';        // <--- Zmiana z ../../ na ../
+import { useUserStore, User } from '../store/useUserStore';
+import { useKanbanStore } from '../store/useKanbanStore';
 import { Trash2, UserPlus, X, Key, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 
 const UserManagement = () => {
@@ -109,7 +109,6 @@ const UserManagement = () => {
           </div>
       </div>
 
-      {/* --- TABELA USERÓW --- */}
       <div className="rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden">
         <table className="w-full text-left text-sm text-gray-600">
           <thead className="bg-gray-100 text-xs uppercase text-gray-500 font-bold border-b border-gray-200">

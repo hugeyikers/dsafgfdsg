@@ -9,9 +9,11 @@ interface TaskProps {
     rows: KanbanRow[];
     onClick: () => void;
     onDoubleClick: () => void;
+    // Odbieramy nową funkcję do bezpiecznego wyświetlania panelu "About"
+    onHover?: (title: string | null, subtitle?: string) => void; 
 }
 
-const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClick }) => {
+const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClick, onHover }) => {
     const { updateItem } = useKanbanStore();
     const [isNativeDragOver, setIsNativeDragOver] = useState(false);
 
@@ -64,8 +66,13 @@ const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClic
                     onDragEnter={handleNativeDragEnter}
                     onDragLeave={handleNativeDragLeave}
                     onDrop={handleNativeDrop}
+                    
+                    // Podpięcie okienka "About"
+                    onMouseEnter={() => onHover && onHover(`Task: ${item.title}`, 'Double click to edit details')}
+                    onMouseLeave={() => onHover && onHover(null)}
 
-                    className={`relative w-full mb-3 p-3 flex flex-col justify-between rounded-xl border border-gray-200 group min-h-[90px] overflow-hidden cursor-pointer transition-all duration-200
+                    // ROZWIĄZANIE D&D: transition-all zamienione na transition-colors transition-shadow
+                    className={`relative w-full mb-3 p-3 flex flex-col justify-between rounded-xl border border-gray-200 group min-h-[90px] overflow-hidden cursor-pointer transition-colors transition-shadow duration-200
                         ${snapshot.isDragging ? 'shadow-2xl z-50 ring-2 ring-purple-500' : 'shadow-sm hover:border-purple-400 hover:shadow-md'}
                         ${isNativeDragOver ? 'ring-4 ring-blue-500 bg-blue-50 scale-105 z-40' : ''} 
                     `}

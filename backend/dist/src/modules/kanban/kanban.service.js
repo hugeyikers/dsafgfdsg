@@ -87,7 +87,7 @@ let KanbanService = class KanbanService {
         const order = maxOrder ? maxOrder.order + 1 : 0;
         return this.prisma.kanbanItem.create({
             data: {
-                title: dto.content,
+                title: dto.title,
                 content: dto.content,
                 columnId: dto.columnId,
                 rowId: dto.rowId || null,

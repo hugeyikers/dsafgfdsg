@@ -94,7 +94,7 @@ export class KanbanService implements OnModuleInit {
 
     return this.prisma.kanbanItem.create({
       data: { 
-        title: dto.content,
+        title: dto.title,
         content: dto.content,
         columnId: dto.columnId,
         rowId: dto.rowId || null,
