@@ -1,13 +1,24 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+=======
+import React, { useEffect, useState, useRef } from 'react';
+>>>>>>> 8d94283 (update settings)
 import { createPortal } from 'react-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useKanbanStore } from '../../store/useKanbanStore';
 import { useUserStore } from '../../store/useUserStore';
 import Task from './components/Task';
+<<<<<<< HEAD
 import { X } from 'lucide-react';
 
 import EditSidebar, { PanelState, PanelMode, PanelType } from './components/EditSidebar';
+=======
+import { Trash2, X } from 'lucide-react';
+
+import EditSidebar from './components/EditSidebar';
+import DeletePromptModal from './components/DeletePromptModal';
+>>>>>>> 8d94283 (update settings)
 
 // ============================================================================
 // SYSTEM ZMIENNYCH KONTROLUJĄCYCH WYMIARY (Edytuj te wartości!)
@@ -41,6 +52,14 @@ const KanbanBoard = () => {
     const { users, fetchUsers, maxTasksPerUser = 5 } = useUserStore();
     
     const [dragState, setDragState] = useState<{ isDragging: boolean; type: string | null }>({ isDragging: false, type: null });
+<<<<<<< HEAD
+=======
+    const [showTrash, setShowTrash] = useState(false);
+    const trashTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const [deletePrompt, setDeletePrompt] = useState<{type: PanelType, id: number, hasItems: boolean} | null>(null);
+    const [targetMoveId, setTargetMoveId] = useState<number | 'unlabeled'>('unlabeled');
+>>>>>>> 8d94283 (update settings)
     
     const [filteredUserIds, setFilteredUserIds] = useState<number[]>([]);
     const [headerNode, setHeaderNode] = useState<HTMLElement | null>(null);
@@ -239,6 +258,49 @@ const KanbanBoard = () => {
         const { destination, source, draggableId, type } = result;
         if (!destination) return;
 
+<<<<<<< HEAD
+=======
+        if (destination.droppableId.startsWith('trash-')) {
+            const id = parseInt(draggableId.split('-')[1]);
+            if (type === 'task') {
+                if (window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) {
+                    removeItem(id);
+                    if (panel.item?.id === id) setPanel(prev => ({ ...prev, isOpen: false }));
+                }
+                return;
+            }
+            if (type === 'column' || type === 'row') {
+                if (type === 'column') {
+                    const colObj = columns.find(c => c.id === id);
+                    if (colObj?.title === 'Backlog') {
+                        alert("The Backlog column is protected and cannot be deleted.");
+                        return;
+                    }
+                }
+
+                const hasItems = type === 'column' 
+                    ? (columns.find(c => c.id === id)?.items.length ?? 0) > 0
+                    : columns.some(c => c.items.some(i => i.rowId === id));
+
+                if (!hasItems) {
+                    if (window.confirm(`Are you sure you want to delete this ${type}?`)) {
+                        type === 'column' ? removeColumn(id) : removeRow(id);
+                        if (panel.item?.id === id) setPanel(prev => ({ ...prev, isOpen: false }));
+                    }
+                } else {
+                    if (type === 'column') {
+                        const availableCols = columns.filter(c => c.id !== id);
+                        setTargetMoveId(availableCols.length > 0 ? availableCols[0].id : 'unlabeled');
+                    } else {
+                        setTargetMoveId('unlabeled');
+                    }
+                    setDeletePrompt({ type: type as PanelType, id, hasItems });
+                }
+                return;
+            }
+        }
+
+>>>>>>> 8d94283 (update settings)
         if (destination.droppableId === source.droppableId && destination.index === source.index) return;
         
         if (type === 'column') { 
@@ -320,6 +382,7 @@ const KanbanBoard = () => {
     const handleClearTasks = () => {
         if (!panel.item) return;
 
+<<<<<<< HEAD
         let tasksToRemove: any[] = [];
         if (panel.type === 'column') {
             const col = columns.find(c => c.id === panel.item.id);
@@ -357,6 +420,18 @@ const KanbanBoard = () => {
             const destParts = destination.droppableId.split('-');
             const targetColId = parseInt(destParts[1]);
             const targetRowId = destParts[2] === 'null' ? null : parseInt(destParts[2]);
+=======
+        if (panel.type === 'task') {
+            if (window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) {
+                removeItem(panel.item.id);
+                setPanel(prev => ({ ...prev, isOpen: false }));
+            }
+        } else {
+            if (panel.type === 'column' && panel.item.title === 'Backlog') return;
+            const hasItems = panel.type === 'column' 
+                ? (columns.find(c => c.id === panel.item.id)?.items.length ?? 0) > 0
+                : columns.some(c => c.items.some(i => i.rowId === panel.item.id));
+>>>>>>> 8d94283 (update settings)
             
             moveItem(itemId, targetColId, targetRowId);
         }
@@ -487,7 +562,11 @@ const KanbanBoard = () => {
         if (!headerNode) return null;
         
         return createPortal(
+<<<<<<< HEAD
             <div className="flex items-center gap-4 pl-8 h-14">
+=======
+            <div className="flex items-center gap-4 pl-8 border-l-2 border-gray-100 h-14">
+>>>>>>> 8d94283 (update settings)
                 {users.map(u => {
                     const taskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === u.id).length;
                     const isOverLimit = taskCount >= maxTasksPerUser;
@@ -540,8 +619,13 @@ const KanbanBoard = () => {
             {renderTeamBar()}
 
             <EditSidebar
+<<<<<<< HEAD
                 panel={panel} 
                 setPanel={setPanel} 
+=======
+                panel={panel as any} 
+                setPanel={setPanel as any} 
+>>>>>>> 8d94283 (update settings)
                 formData={formData} 
                 setFormData={setFormData}
                 activeField={activeField} 
@@ -553,7 +637,12 @@ const KanbanBoard = () => {
                 handleKeyDownTitle={handleKeyDownTitle} 
                 handleKeyDownDefault={handleKeyDownDefault}
                 handlePanelSaveGlobal={handlePanelSaveGlobal} 
+<<<<<<< HEAD
                 handleClearTasks={handleClearTasks}
+=======
+                handlePanelDelete={handlePanelDelete}
+                handleClearBacklogTasks={handleClearBacklogTasks}
+>>>>>>> 8d94283 (update settings)
                 SIDEBAR_WIDTH={SIDEBAR_WIDTH} 
                 SIDEBAR_LEFT_PADDING={SIDEBAR_LEFT_PADDING}
                 SIDEBAR_RIGHT_PADDING={SIDEBAR_RIGHT_PADDING} 
@@ -563,6 +652,7 @@ const KanbanBoard = () => {
                 FOOTER_RIGHT_RATIO={FOOTER_RIGHT_RATIO}
                 onAssigneeDrop={onAssigneeDrop}
                 dispatchHover={() => {}} 
+<<<<<<< HEAD
                 isDeleting={isDeletingSidebar}
                 setIsDeleting={setIsDeletingSidebar}
                 isClearing={isClearingSidebar}
@@ -570,6 +660,8 @@ const KanbanBoard = () => {
                 pendingMove={pendingMove}
                 setPendingMove={setPendingMove}
                 handleConfirmMove={handleConfirmMove}
+=======
+>>>>>>> 8d94283 (update settings)
             />
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
@@ -761,6 +853,7 @@ const KanbanBoard = () => {
         return col.items.filter(item => item.rowId === rowId);
     };
 
+<<<<<<< HEAD
     return (
         <div className="h-full flex flex-col w-full bg-white relative">
             <DragDropContext onDragEnd={handleDragEnd}>
@@ -878,6 +971,28 @@ const KanbanBoard = () => {
             </DragDropContext>
 
             {/* Modal - Ostrzeżenie przy usuwaniu */}
+=======
+                    <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 w-40 h-40 rounded-full z-[200] transition-all duration-500 ease-out flex items-center justify-center bg-red-500/95 shadow-[0_10px_40px_rgba(239,68,68,0.6)] border-4 border-white backdrop-blur-md ${showTrash ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-75 invisible pointer-events-none'}`}>
+                        {['task', 'column', 'row'].map(dropType => (
+                            <Droppable key={`trash-${dropType}`} droppableId={`trash-${dropType}`} type={dropType} isDropDisabled={!showTrash}>
+                                {(provided, snapshot) => (
+                                    <div ref={provided.innerRef} {...provided.droppableProps} className={`absolute inset-0 rounded-full flex items-center justify-center transition-colors duration-200 overflow-hidden ${snapshot.isDraggingOver ? 'bg-red-600 shadow-inner' : 'bg-transparent'} ${dragState.type === dropType ? 'z-10' : 'z-0 pointer-events-none opacity-0'}`}>
+                                        {dragState.type === dropType && (
+                                            <div className={`flex flex-col items-center gap-1 transition-transform text-white ${snapshot.isDraggingOver ? 'scale-125' : 'scale-100'}`}>
+                                                <Trash2 size={40} />
+                                                <span className="font-bold text-[10px] uppercase tracking-widest text-red-100 text-center leading-tight">Drop to<br/>delete</span>
+                                            </div>
+                                        )}
+                                        <div className="hidden">{provided.placeholder}</div>
+                                    </div>
+                                )}
+                            </Droppable>
+                        ))}
+                    </div>
+                </DragDropContext>
+            </div>
+
+>>>>>>> 8d94283 (update settings)
             {deletePrompt && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                     <div className="bg-white p-6 rounded-xl shadow-xl flex flex-col max-w-sm w-full">
