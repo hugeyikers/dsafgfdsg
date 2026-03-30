@@ -15,12 +15,7 @@ const UserManagement = () => {
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   
-<<<<<<< HEAD
-  const [newUser, setNewUser] = useState({ fullName: '', email: '', password: '', role: 'USER' as const });
-  const [editingUserId, setEditingUserId] = useState<number | null>(null);
-=======
   const [newUser, setNewUser] = useState({ fullName: '', email: '', password: '', role: 'USER' as 'ADMINISTRATOR' | 'USER' });
->>>>>>> 8d94283 (update settings)
 
   useEffect(() => {
     fetchUsers();

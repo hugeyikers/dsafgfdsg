@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-import { KanbanItem, KanbanColumn, KanbanRow } from '../../../store/useKanbanStore';
+import { useKanbanStore, KanbanItem, KanbanColumn, KanbanRow } from '../../../store/useKanbanStore';
 
 interface TaskProps {
     item: KanbanItem;
@@ -9,15 +9,13 @@ interface TaskProps {
     rows: KanbanRow[];
     onClick: () => void;
     onDoubleClick: () => void;
-<<<<<<< HEAD
-    isEditing?: boolean; 
-    onHover: (e: React.MouseEvent | null, title: string | null, subtitle?: string) => void;
-=======
-    onHover?: (title: string | null, subtitle?: string) => void; 
->>>>>>> f62be26 (update UI i funkcjonalnosci)
+    onHover?: (title: string | null, subtitle?: string) => void;
+    isEdited?: boolean;
 }
 
-const Task: React.FC<TaskProps> = ({ item, index, onClick, onDoubleClick, isEditing, onHover }) => {
+const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClick, onHover, isEdited }) => {
+    const { updateItem } = useKanbanStore();
+    const [isNativeDragOver, setIsNativeDragOver] = useState(false);
 
     const handleClick = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -29,8 +27,33 @@ const Task: React.FC<TaskProps> = ({ item, index, onClick, onDoubleClick, isEdit
         onDoubleClick();
     };
 
+    const handleNativeDragOver = (e: React.DragEvent) => { e.preventDefault(); };
+    const handleNativeDragEnter = (e: React.DragEvent) => { e.preventDefault(); setIsNativeDragOver(true); };
+    const handleNativeDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsNativeDragOver(false); };
+
+    const handleNativeDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsNativeDragOver(false);
+
+        const userIdStr = e.dataTransfer.getData('text/plain');
+        if (!userIdStr) return;
+
+        const userId = parseInt(userIdStr, 10);
+        if (isNaN(userId)) return;
+
+        if (item.assignedToId === userId) return;
+
+        const userTaskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === userId).length;
+        if (userTaskCount >= 5) {
+            alert(`USER LIMIT EXCEEDED!\n\nA maximum of 5 tasks per user is allowed.`);
+            return;
+        }
+
+        updateItem(item.id, { assignedToId: userId });
+    };
+
     return (
-        <Draggable draggableId={`task-${item.id}`} index={index}>
+        <Draggable draggableId={`item-${item.id}`} index={index}>
             {(provided, snapshot) => (
                 <div
                     ref={provided.innerRef}
@@ -38,38 +61,21 @@ const Task: React.FC<TaskProps> = ({ item, index, onClick, onDoubleClick, isEdit
                     {...provided.dragHandleProps}
                     onClick={handleClick}
                     onDoubleClick={handleDoubleClick}
-<<<<<<< HEAD
-                    
-                    // Podpięcie okienka "About"
-                    onMouseEnter={(e) => onHover(e, `Task: ${item.title}`, 'Double click to view or edit details')}
-                    onMouseLeave={(e) => onHover(e, null)}
-
-                    // CZYSTE KLASY CSS: Tylko bezpieczne kolory i cienie
-                    className={`relative w-full mb-3 p-3 flex flex-col justify-between rounded-xl border-2 transition-colors transition-shadow duration-200 select-none group min-h-[90px] overflow-hidden cursor-grab active:cursor-grabbing
-                        ${snapshot.isDragging ? 'shadow-2xl z-50 ring-2 ring-purple-500 border-transparent' : 'border-gray-200 hover:border-purple-300 hover:shadow-md'}
-                        ${isEditing && !snapshot.isDragging ? 'ring-2 ring-purple-500 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.4)] z-30' : ''}
-                    `}
-                    style={{ 
-                        ...provided.draggableProps.style, 
-                        backgroundColor: item.color || '#ffffff',
-                        borderLeftColor: item.color && item.color !== '#ffffff' ? item.color : undefined,
-                        borderLeftWidth: item.color && item.color !== '#ffffff' ? '6px' : '2px',
-=======
                     onDragOver={handleNativeDragOver}
                     onDragEnter={handleNativeDragEnter}
                     onDragLeave={handleNativeDragLeave}
                     onDrop={handleNativeDrop}
                     onMouseEnter={() => onHover && onHover(`Task: ${item.title}`, 'Double click to edit details')}
                     onMouseLeave={() => onHover && onHover(null)}
-                    className={`relative w-full mb-3 p-3 flex flex-col justify-between rounded-xl border border-gray-200 group min-h-[90px] cursor-pointer transition-colors transition-shadow duration-200
+                    className={`relative w-full mb-3 p-3 flex flex-col justify-between rounded-xl border border-gray-200 group min-h-[90px] cursor-pointer transition-all duration-200
                         ${snapshot.isDragging ? 'shadow-2xl ring-2 ring-purple-500 border-transparent z-[9999]' : 'shadow-sm hover:border-purple-400 hover:shadow-md'}
                         ${isNativeDragOver ? 'ring-4 ring-blue-500 bg-blue-50 scale-105 z-40' : ''} 
+                        ${isEdited && !snapshot.isDragging && !isNativeDragOver ? 'ring-4 ring-blue-500 border-transparent z-30 scale-[1.02]' : ''}
                     `}
                     style={{ 
                         ...provided.draggableProps.style, 
-                        backgroundColor: isNativeDragOver ? '#eff6ff' : (item.color || '#ffffff'),
-                        zIndex: snapshot.isDragging ? 9999 : undefined
->>>>>>> f62be26 (update UI i funkcjonalnosci)
+                        backgroundColor: isNativeDragOver ? '#eff6ff' : (isEdited ? '#eff6ff' : (item.color || '#ffffff')),
+                        zIndex: snapshot.isDragging ? 9999 : (isEdited ? 30 : undefined)
                     }}
                 >
                     <div className="flex items-center justify-center flex-1 px-1 mb-2 w-full text-center pointer-events-none relative z-20">
@@ -92,13 +98,10 @@ const Task: React.FC<TaskProps> = ({ item, index, onClick, onDoubleClick, isEdit
                             </div>
                         )}
                     </div>
-<<<<<<< HEAD
-=======
 
                     <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 pl-8">
                         <span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full backdrop-blur-sm border border-gray-100 shadow-sm">Double click</span>
                     </div>
->>>>>>> f62be26 (update UI i funkcjonalnosci)
                 </div>
             )}
         </Draggable>
