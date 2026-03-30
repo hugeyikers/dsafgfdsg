@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useKanbanStore } from '../../store/useKanbanStore';
 import { useUserStore } from '../../store/useUserStore';
 import Task from './components/Task';
-import { Trash2 } from 'lucide-react';
+import { Trash2, X } from 'lucide-react';
 
 import EditSidebar from './components/EditSidebar';
-import TeamSidebar from './components/TeamSidebar';
 import DeletePromptModal from './components/DeletePromptModal';
 
 type PanelType = 'task' | 'column' | 'row';
@@ -17,7 +17,6 @@ const SIDEBAR_RIGHT_PADDING = 20;
 const SIDEBAR_CONTENT_WIDTH = 360; 
 const SIDEBAR_WIDTH = SIDEBAR_CONTENT_WIDTH + SIDEBAR_LEFT_PADDING + SIDEBAR_RIGHT_PADDING; 
 
-const USERS_SIDEBAR_WIDTH = 90; 
 const FOOTER_HEIGHT = 80;  
 const FOOTER_LEFT_RATIO = 0.25;  
 const FOOTER_RIGHT_RATIO = 0.75; 
@@ -25,17 +24,17 @@ const DETAILS_FIELD_RADIUS = '10px';
 
 const KanbanBoard = () => {
     const { columns = [], rows = [], fetchBoard, addColumn, addRow, moveItem, removeColumn, removeRow, updateColumn, updateRow, addItem, reorderColumns, reorderRows, removeItem, updateItem } = useKanbanStore();
-    const { fetchUsers, maxTasksPerUser = 5 } = useUserStore();
+    const { users, fetchUsers, maxTasksPerUser = 5 } = useUserStore();
     
     const [dragState, setDragState] = useState<{ isDragging: boolean; type: string | null }>({ isDragging: false, type: null });
     const [showTrash, setShowTrash] = useState(false);
-    const trashTimeout = useRef<NodeJS.Timeout | null>(null);
+    const trashTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [deletePrompt, setDeletePrompt] = useState<{type: PanelType, id: number, hasItems: boolean} | null>(null);
     const [targetMoveId, setTargetMoveId] = useState<number | 'unlabeled'>('unlabeled');
     
-    const [showUsersBar, setShowUsersBar] = useState(false);
     const [filteredUserIds, setFilteredUserIds] = useState<number[]>([]);
+    const [headerNode, setHeaderNode] = useState<HTMLElement | null>(null);
 
     const [panel, setPanel] = useState<{ isOpen: boolean, type: PanelType, mode: PanelMode, item: any, extra?: any }>({
         isOpen: false, type: 'task', mode: 'view', item: null
@@ -48,6 +47,7 @@ const KanbanBoard = () => {
     useEffect(() => {
         fetchBoard();
         fetchUsers();
+        setHeaderNode(document.getElementById('kanban-header-actions'));
     }, [fetchBoard, fetchUsers]);
 
     useEffect(() => {
@@ -139,6 +139,13 @@ const KanbanBoard = () => {
         setActiveField(null);
     };
 
+    const onAssigneeDrop = (userId: number) => {
+        if (panel.type === 'task' && panel.item) {
+            setActiveField('assignedToId');
+            saveEdit(userId);
+        }
+    };
+
     const handleKeyDownTitle = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -216,7 +223,7 @@ const KanbanBoard = () => {
                 }
 
                 const hasItems = type === 'column' 
-                    ? columns.find(c => c.id === id)?.items.length > 0
+                    ? (columns.find(c => c.id === id)?.items.length ?? 0) > 0
                     : columns.some(c => c.items.some(i => i.rowId === id));
 
                 if (!hasItems) {
@@ -315,7 +322,7 @@ const KanbanBoard = () => {
         } else {
             if (panel.type === 'column' && panel.item.title === 'Backlog') return;
             const hasItems = panel.type === 'column' 
-                ? columns.find(c => c.id === panel.item.id)?.items.length > 0
+                ? (columns.find(c => c.id === panel.item.id)?.items.length ?? 0) > 0
                 : columns.some(c => c.items.some(i => i.rowId === panel.item.id));
             
             setPanel(prev => ({ ...prev, isOpen: false }));
@@ -355,8 +362,6 @@ const KanbanBoard = () => {
         }
         return result;
     };
-
-    const isBacklogPanel = panel.type === 'column' && panel.item?.title === 'Backlog';
 
     const renderCell = (col: any, rowId: number | null, isBacklog: boolean, rowColor: string = '#ffffff') => {
         const items = getItems(col.id, rowId);
@@ -419,19 +424,87 @@ const KanbanBoard = () => {
         );
     };
 
+    const renderTeamBar = () => {
+        if (!headerNode) return null;
+        
+        return createPortal(
+            <div className="flex items-center gap-4 pl-8 border-l-2 border-gray-100 h-14">
+                {users.map(u => {
+                    const taskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === u.id).length;
+                    const isOverLimit = taskCount >= maxTasksPerUser;
+                    const isFiltered = filteredUserIds.includes(u.id);
+                    const isAnyFilterActive = filteredUserIds.length > 0;
+                    const isDimmed = isAnyFilterActive && !isFiltered;
+
+                    return (
+                        <div
+                            key={u.id}
+                            draggable={false} 
+                            onClick={() => setFilteredUserIds(prev => prev.includes(u.id) ? prev.filter(id => id !== u.id) : [...prev, u.id])}
+                            onDoubleClick={(e) => { e.stopPropagation(); setFilteredUserIds([u.id]); }}
+                            className={`group relative flex flex-col items-center transition-all select-none cursor-pointer ${isDimmed ? 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0' : ''}`}
+                            title={`${u.fullName} (${u.email}) • ${taskCount}/${maxTasksPerUser} tasks assigned`}
+                        >
+                            <div 
+                                draggable={!isOverLimit}
+                                onDragStart={(e) => { 
+                                    e.stopPropagation(); 
+                                    e.dataTransfer.setData('text/plain', u.id.toString()); 
+                                    e.dataTransfer.effectAllowed = 'copy'; 
+                                }}
+                                className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm shadow-sm border-2 ${!isOverLimit ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed'} ${isFiltered ? 'bg-blue-100 text-blue-700 border-blue-500 ring-4 ring-blue-500/20' : isOverLimit ? 'bg-gray-200 text-gray-500 border-gray-300' : 'bg-white text-gray-700 border-gray-200 hover:border-blue-400 transition-all'}`}
+                            >
+                                {u.fullName.substring(0, 2).toUpperCase()}
+                            </div>
+                            <span className={`text-[11px] font-black mt-1 leading-none ${isOverLimit ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {taskCount}/{maxTasksPerUser}
+                            </span>
+                        </div>
+                    );
+                })}
+                {filteredUserIds.length > 0 && (
+                    <button 
+                        onClick={() => setFilteredUserIds([])} 
+                        title="Clear Filters"
+                        className="flex items-center justify-center ml-2 text-red-500 hover:bg-red-50 p-2.5 rounded-lg transition-colors border border-transparent hover:border-red-200"
+                    >
+                        <X size={22} />
+                    </button>
+                )}
+            </div>,
+            headerNode
+        );
+    };
+
     return (
         <div className="h-full flex w-full bg-gray-50 relative overflow-hidden">
-            
+            {renderTeamBar()}
+
             <EditSidebar
-                panel={panel} setPanel={setPanel} formData={formData} setFormData={setFormData}
-                activeField={activeField} editValue={editValue} setEditValue={setEditValue}
-                startEdit={startEdit} cancelEdit={cancelEdit} saveEdit={saveEdit}
-                handleKeyDownTitle={handleKeyDownTitle} handleKeyDownDefault={handleKeyDownDefault}
-                handlePanelSaveGlobal={handlePanelSaveGlobal} handlePanelDelete={handlePanelDelete}
+                panel={panel as any} 
+                setPanel={setPanel as any} 
+                formData={formData} 
+                setFormData={setFormData}
+                activeField={activeField} 
+                editValue={editValue} 
+                setEditValue={setEditValue}
+                startEdit={startEdit} 
+                cancelEdit={cancelEdit} 
+                saveEdit={saveEdit}
+                handleKeyDownTitle={handleKeyDownTitle} 
+                handleKeyDownDefault={handleKeyDownDefault}
+                handlePanelSaveGlobal={handlePanelSaveGlobal} 
+                handlePanelDelete={handlePanelDelete}
                 handleClearBacklogTasks={handleClearBacklogTasks}
-                SIDEBAR_WIDTH={SIDEBAR_WIDTH} SIDEBAR_LEFT_PADDING={SIDEBAR_LEFT_PADDING}
-                SIDEBAR_RIGHT_PADDING={SIDEBAR_RIGHT_PADDING} DETAILS_FIELD_RADIUS={DETAILS_FIELD_RADIUS}
-                FOOTER_HEIGHT={FOOTER_HEIGHT} FOOTER_LEFT_RATIO={FOOTER_LEFT_RATIO} FOOTER_RIGHT_RATIO={FOOTER_RIGHT_RATIO}
+                SIDEBAR_WIDTH={SIDEBAR_WIDTH} 
+                SIDEBAR_LEFT_PADDING={SIDEBAR_LEFT_PADDING}
+                SIDEBAR_RIGHT_PADDING={SIDEBAR_RIGHT_PADDING} 
+                DETAILS_FIELD_RADIUS={DETAILS_FIELD_RADIUS}
+                FOOTER_HEIGHT={FOOTER_HEIGHT} 
+                FOOTER_LEFT_RATIO={FOOTER_LEFT_RATIO} 
+                FOOTER_RIGHT_RATIO={FOOTER_RIGHT_RATIO}
+                onAssigneeDrop={onAssigneeDrop}
+                dispatchHover={() => {}} 
             />
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -559,7 +632,6 @@ const KanbanBoard = () => {
                         </div>
                     </div>
 
-                    {/* TRASH ZONE */}
                     <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 w-40 h-40 rounded-full z-[200] transition-all duration-500 ease-out flex items-center justify-center bg-red-500/95 shadow-[0_10px_40px_rgba(239,68,68,0.6)] border-4 border-white backdrop-blur-md ${showTrash ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-75 invisible pointer-events-none'}`}>
                         {['task', 'column', 'row'].map(dropType => (
                             <Droppable key={`trash-${dropType}`} droppableId={`trash-${dropType}`} type={dropType} isDropDisabled={!showTrash}>
@@ -579,15 +651,6 @@ const KanbanBoard = () => {
                     </div>
                 </DragDropContext>
             </div>
-
-            {/* PRAWY SIDEBAR */}
-            <TeamSidebar 
-                showUsersBar={showUsersBar}
-                setShowUsersBar={setShowUsersBar}
-                filteredUserIds={filteredUserIds}
-                setFilteredUserIds={setFilteredUserIds}
-                USERS_SIDEBAR_WIDTH={USERS_SIDEBAR_WIDTH}
-            />
 
             {deletePrompt && (
                 <DeletePromptModal 
