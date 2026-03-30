@@ -1,32 +1,16 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-=======
-import React, { useEffect, useState, useRef } from 'react';
->>>>>>> 8d94283 (update settings)
 import { createPortal } from 'react-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useKanbanStore } from '../../store/useKanbanStore';
 import { useUserStore } from '../../store/useUserStore';
 import Task from './components/Task';
-<<<<<<< HEAD
 import { X } from 'lucide-react';
 
 import EditSidebar, { PanelState, PanelMode, PanelType } from './components/EditSidebar';
-=======
-import { Trash2, X } from 'lucide-react';
-
-<<<<<<< HEAD
-import EditSidebar from './components/EditSidebar';
-import DeletePromptModal from './components/DeletePromptModal';
->>>>>>> 8d94283 (update settings)
 
 // ============================================================================
 // SYSTEM ZMIENNYCH KONTROLUJĄCYCH WYMIARY (Edytuj te wartości!)
 // ============================================================================
-=======
-import EditSidebar, { PanelState, PanelMode, PanelType } from './components/EditSidebar';
->>>>>>> f62be26 (update UI i funkcjonalnosci)
 
 // 1. Szerokość pojedynczego kafelka zadania (w pikselach)
 const TASK_WIDTH = 180; 
@@ -56,17 +40,6 @@ const KanbanBoard = () => {
     const { users, fetchUsers, maxTasksPerUser = 5 } = useUserStore();
     
     const [dragState, setDragState] = useState<{ isDragging: boolean; type: string | null }>({ isDragging: false, type: null });
-<<<<<<< HEAD
-=======
-    const [showTrash, setShowTrash] = useState(false);
-    const trashTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-<<<<<<< HEAD
-
-    const [deletePrompt, setDeletePrompt] = useState<{type: PanelType, id: number, hasItems: boolean} | null>(null);
-    const [targetMoveId, setTargetMoveId] = useState<number | 'unlabeled'>('unlabeled');
->>>>>>> 8d94283 (update settings)
-=======
->>>>>>> f62be26 (update UI i funkcjonalnosci)
     
     const [filteredUserIds, setFilteredUserIds] = useState<number[]>([]);
     const [headerNode, setHeaderNode] = useState<HTMLElement | null>(null);
@@ -74,11 +47,8 @@ const KanbanBoard = () => {
     const [isDeletingSidebar, setIsDeletingSidebar] = useState(false);
     const [isClearingSidebar, setIsClearingSidebar] = useState(false);
     
-<<<<<<< HEAD
     const [pendingMove, setPendingMove] = useState<{itemId: number, targetColId: number, targetRowId: number | null} | null>(null);
 
-=======
->>>>>>> f62be26 (update UI i funkcjonalnosci)
     const [panel, setPanel] = useState<PanelState>({
         isOpen: false, type: 'task', mode: 'view', item: null
     });
@@ -86,25 +56,6 @@ const KanbanBoard = () => {
     const [activeField, setActiveField] = useState<string | null>(null);
     const [editValue, setEditValue] = useState<any>('');
     const [formData, setFormData] = useState({ title: '', content: '', color: '#ffffff', limit: 0, assignedToId: null as number | null });
-=======
-import React, { useEffect, useState } from 'react';
-import { DragDropContext, Droppable } from '@hello-pangea/dnd';
-import { useKanbanStore } from '../../store/useKanbanStore';
-import { useUserStore } from '../../store/useUserStore';
-import Task from './components/Task';
-import { Plus, Trash2, Edit2, X } from 'lucide-react'; // Dodano X do importów
-
-const KanbanBoard = () => {
-    const { columns, rows, fetchBoard, addColumn, addRow, moveItem, removeColumn, removeRow, updateColumn, updateRow, addItem } = useKanbanStore();
-    const { fetchUsers } = useUserStore();
-    
-    const [deletePrompt, setDeletePrompt] = useState<{type: 'column'|'row', id: number, hasItems: boolean} | null>(null);
-
-    // Stan do dodawania nowego zadania w konkretnej komórce
-    const [addingToCell, setAddingToCell] = useState<{colId: number, rowId: number | null} | null>(null);
-    const [newTaskTitle, setNewTaskTitle] = useState('');
-    const [newTaskContent, setNewTaskContent] = useState('');
->>>>>>> 3fbcbef (adding working drag and drop)
 
     useEffect(() => {
         fetchBoard();
@@ -112,17 +63,13 @@ const KanbanBoard = () => {
         setHeaderNode(document.getElementById('kanban-header-actions'));
     }, [fetchBoard, fetchUsers]);
 
-<<<<<<< HEAD
     useEffect(() => {
         if (!panel.isOpen) {
             setActiveField(null);
             setEditValue('');
             setIsDeletingSidebar(false);
             setIsClearingSidebar(false);
-<<<<<<< HEAD
             setPendingMove(null);
-=======
->>>>>>> f62be26 (update UI i funkcjonalnosci)
         }
     }, [panel.isOpen]);
 
@@ -271,36 +218,6 @@ const KanbanBoard = () => {
         const { destination, source, draggableId, type } = result;
         if (!destination) return;
 
-<<<<<<< HEAD
-=======
-        if (destination.droppableId.startsWith('trash-')) {
-            const id = parseInt(draggableId.split('-')[1]);
-            if (type === 'task') {
-                const item = columns.flatMap(c => c.items).find(i => i.id === id);
-                if (item) {
-                    openPanel('view', 'task', item, null, false);
-                    setIsDeletingSidebar(true);
-                }
-                return;
-            }
-            if (type === 'column' || type === 'row') {
-                if (type === 'column') {
-                    const colObj = columns.find(c => c.id === id);
-                    if (colObj?.title === 'Backlog') {
-                        alert("The Backlog column is protected and cannot be deleted.");
-                        return;
-                    }
-                }
-                const item = type === 'column' ? columns.find(c => c.id === id) : rows.find(r => r.id === id);
-                if (item) {
-                    openPanel('view', type as PanelType, item, null, false);
-                    setIsDeletingSidebar(true);
-                }
-                return;
-            }
-        }
-
->>>>>>> 8d94283 (update settings)
         if (destination.droppableId === source.droppableId && destination.index === source.index) return;
         
         if (type === 'column') { 
@@ -382,17 +299,12 @@ const KanbanBoard = () => {
     const handleClearTasks = () => {
         if (!panel.item) return;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> f62be26 (update UI i funkcjonalnosci)
         let tasksToRemove: any[] = [];
         if (panel.type === 'column') {
             const col = columns.find(c => c.id === panel.item.id);
             if (col && col.items) tasksToRemove = col.items;
         } else if (panel.type === 'row') {
             tasksToRemove = columns.flatMap(c => c.items).filter(i => i.rowId === panel.item.id);
-<<<<<<< HEAD
         }
 
         if (tasksToRemove.length > 0) {
@@ -408,81 +320,11 @@ const KanbanBoard = () => {
         setIsDeletingSidebar(false);
         setIsClearingSidebar(false);
         setPendingMove(null);
-=======
-    const handleDragEnd = (result: any) => {
-        const { destination, source, draggableId } = result;
-        
-        // 1. Jeśli upuszczono poza tablicą
-        if (!destination) return;
-        
-        // 2. Jeśli upuszczono dokładnie w tej samej komórce (ignorujemy, bo backend nie ma obsługi sortowania 'order')
-        if (destination.droppableId === source.droppableId) return;
-        
-        // 3. Właściwe przeniesienie do innej komórki
-        if (destination.droppableId.startsWith('cell-')) {
-            const itemId = parseInt(draggableId.split('-')[1]);
-            const destParts = destination.droppableId.split('-');
-            const targetColId = parseInt(destParts[1]);
-            const targetRowId = destParts[2] === 'null' ? null : parseInt(destParts[2]);
-=======
-        if (panel.type === 'task') {
-            if (window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) {
-                removeItem(panel.item.id);
-                setPanel(prev => ({ ...prev, isOpen: false }));
-            }
-        } else {
-            if (panel.type === 'column' && panel.item.title === 'Backlog') return;
-            const hasItems = panel.type === 'column' 
-                ? (columns.find(c => c.id === panel.item.id)?.items.length ?? 0) > 0
-                : columns.some(c => c.items.some(i => i.rowId === panel.item.id));
->>>>>>> 8d94283 (update settings)
-            
-            moveItem(itemId, targetColId, targetRowId);
-=======
->>>>>>> f62be26 (update UI i funkcjonalnosci)
-        }
-
-        if (tasksToRemove.length > 0) {
-            tasksToRemove.forEach(task => removeItem(task.id));
-        }
-        
-        setPanel(prev => ({ ...prev, isOpen: false }));
-        setIsClearingSidebar(false);
-    };
-
-<<<<<<< HEAD
-    const handleDeleteAttempt = (type: 'column'|'row', id: number, hasItems: boolean) => {
-        if (!hasItems) {
-            if (window.confirm(`Czy na pewno chcesz usunąć ten ${type === 'column' ? 'kolumnę' : 'wiersz'}?`)) {
-                type === 'column' ? removeColumn(id) : removeRow(id);
-            }
-        } else {
-            setDeletePrompt({ type, id, hasItems });
-        }
-=======
-    const closeSidebar = () => {
-        setPanel(prev => ({ ...prev, isOpen: false }));
-        setIsDeletingSidebar(false);
-        setIsClearingSidebar(false);
->>>>>>> f62be26 (update UI i funkcjonalnosci)
-    };
-
-    const handleAddTask = async (colId: number, rowId: number | null) => {
-        const finalTitle = newTaskTitle.trim() || 'brak';
-        const finalContent = newTaskContent.trim() || 'brak';
-        
-        await addItem(colId, rowId, finalTitle, finalContent);
-        
-        setNewTaskTitle('');
-        setNewTaskContent('');
-        setAddingToCell(null);
->>>>>>> 3fbcbef (adding working drag and drop)
     };
 
     const getItems = (colId: number, rowId: number | null) => {
         const col = columns.find(c => c.id === colId);
         if (!col) return [];
-<<<<<<< HEAD
         let result = col.items.filter(item => item.rowId === rowId);
         if (filteredUserIds.length > 0) result = result.filter(item => item.assignedToId && filteredUserIds.includes(item.assignedToId));
         
@@ -534,11 +376,7 @@ const KanbanBoard = () => {
                         <div 
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-<<<<<<< HEAD
                             className={`flex-1 flex flex-col transition-colors h-full relative
-=======
-                            className={`flex-1 flex flex-col px-4 pt-4 transition-colors h-full relative
->>>>>>> f62be26 (update UI i funkcjonalnosci)
                                 ${snapshot.isDraggingOver ? (isOverLimit ? 'bg-red-500/10' : 'bg-black/5 shadow-inner') : ''}
                             `}
                             // Zastosowanie zmiennych do marginesów wewnątrz komórki (góra, dół, boki)
@@ -549,7 +387,6 @@ const KanbanBoard = () => {
                                 paddingBottom: `${CELL_PADDING_BOTTOM}px` 
                             }}
                         >
-<<<<<<< HEAD
                             {items.map((item, idx) => {
                                 const isEditedTask = panel.isOpen && panel.type === 'task' && panel.item?.id === item.id;
                                 return (
@@ -571,25 +408,6 @@ const KanbanBoard = () => {
                                     />
                                 );
                             })}
-=======
-                            {items.map((item, idx) => (
-                                <Task 
-                                    key={item.id} 
-                                    item={item} 
-                                    index={idx} 
-                                    columns={columns} 
-                                    rows={rows} 
-                                    onClick={() => { 
-                                        if (isDeletingSidebar || isClearingSidebar) return;
-                                        if (panel.isOpen) openPanel('view', 'task', item, null, false); 
-                                    }}
-                                    onDoubleClick={() => { 
-                                        if (isDeletingSidebar || isClearingSidebar) return;
-                                        openPanel('view', 'task', item, null, true); 
-                                    }}
-                                />
-                            ))}
->>>>>>> f62be26 (update UI i funkcjonalnosci)
                             {provided.placeholder}
                         </div>
                     )}
@@ -606,11 +424,7 @@ const KanbanBoard = () => {
         if (!headerNode) return null;
         
         return createPortal(
-<<<<<<< HEAD
             <div className="flex items-center gap-4 pl-8 h-14">
-=======
-            <div className="flex items-center gap-4 pl-8 border-l-2 border-gray-100 h-14">
->>>>>>> 8d94283 (update settings)
                 {users.map(u => {
                     const taskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === u.id).length;
                     const isOverLimit = taskCount >= maxTasksPerUser;
@@ -663,18 +477,8 @@ const KanbanBoard = () => {
             {renderTeamBar()}
 
             <EditSidebar
-<<<<<<< HEAD
-<<<<<<< HEAD
                 panel={panel} 
                 setPanel={setPanel} 
-=======
-                panel={panel as any} 
-                setPanel={setPanel as any} 
->>>>>>> 8d94283 (update settings)
-=======
-                panel={panel} 
-                setPanel={setPanel} 
->>>>>>> f62be26 (update UI i funkcjonalnosci)
                 formData={formData} 
                 setFormData={setFormData}
                 activeField={activeField} 
@@ -686,16 +490,7 @@ const KanbanBoard = () => {
                 handleKeyDownTitle={handleKeyDownTitle} 
                 handleKeyDownDefault={handleKeyDownDefault}
                 handlePanelSaveGlobal={handlePanelSaveGlobal} 
-<<<<<<< HEAD
-<<<<<<< HEAD
                 handleClearTasks={handleClearTasks}
-=======
-                handlePanelDelete={handlePanelDelete}
-                handleClearBacklogTasks={handleClearBacklogTasks}
->>>>>>> 8d94283 (update settings)
-=======
-                handleClearTasks={handleClearTasks}
->>>>>>> f62be26 (update UI i funkcjonalnosci)
                 SIDEBAR_WIDTH={SIDEBAR_WIDTH} 
                 SIDEBAR_LEFT_PADDING={SIDEBAR_LEFT_PADDING}
                 SIDEBAR_RIGHT_PADDING={SIDEBAR_RIGHT_PADDING} 
@@ -705,22 +500,13 @@ const KanbanBoard = () => {
                 FOOTER_RIGHT_RATIO={FOOTER_RIGHT_RATIO}
                 onAssigneeDrop={onAssigneeDrop}
                 dispatchHover={() => {}} 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> f62be26 (update UI i funkcjonalnosci)
                 isDeleting={isDeletingSidebar}
                 setIsDeleting={setIsDeletingSidebar}
                 isClearing={isClearingSidebar}
                 setIsClearing={setIsClearingSidebar}
-<<<<<<< HEAD
                 pendingMove={pendingMove}
                 setPendingMove={setPendingMove}
                 handleConfirmMove={handleConfirmMove}
-=======
->>>>>>> 8d94283 (update settings)
-=======
->>>>>>> f62be26 (update UI i funkcjonalnosci)
             />
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
@@ -755,7 +541,6 @@ const KanbanBoard = () => {
                                     </div>
                                 </div>
                                  
-<<<<<<< HEAD
                                 {backlogColumn && (() => {
                                     const isEditedBacklog = panel.isOpen && panel.type === 'column' && panel.item?.id === backlogColumn.id;
                                     return (
@@ -779,27 +564,6 @@ const KanbanBoard = () => {
                                             <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                                                 <span className="text-[10px] italic text-gray-400 bg-white/70 px-2 py-0.5 rounded-full">Double click to view</span>
                                             </div>
-=======
-                                {backlogColumn && (
-                                    <div 
-                                        onClick={(e) => { 
-                                            e.stopPropagation(); 
-                                            if (isDeletingSidebar || isClearingSidebar) return;
-                                            if (panel.isOpen) openPanel('view', 'column', backlogColumn, null, false); 
-                                        }}
-                                        onDoubleClick={(e) => { 
-                                            e.stopPropagation(); 
-                                            if (isDeletingSidebar || isClearingSidebar) return;
-                                            openPanel('view', 'column', backlogColumn, null, true); 
-                                        }}
-                                        className="group w-[360px] h-full flex-shrink-0 border-r-2 border-dashed flex flex-col items-center justify-center transition-colors select-none cursor-pointer relative"
-                                        style={{ borderColor: '#d1d5db', backgroundColor: 'transparent' }}
-                                    >
-                                        <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
-                                        <h3 className="font-black text-sm tracking-widest uppercase text-center w-full truncate text-gray-400 px-4 relative z-10">{backlogColumn.title}</h3>
-                                        <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                                            <span className="text-[10px] italic text-gray-400 bg-white/70 px-2 py-0.5 rounded-full">Double click to view</span>
->>>>>>> f62be26 (update UI i funkcjonalnosci)
                                         </div>
                                     );
                                 })()}
@@ -827,16 +591,10 @@ const KanbanBoard = () => {
                                                                     if (isDeletingSidebar || isClearingSidebar) return;
                                                                     openPanel('view', 'column', col, null, true); 
                                                                 }}
-<<<<<<< HEAD
                                                                 className={`group flex-shrink-0 border-r-2 flex flex-col items-center justify-center select-none cursor-grab active:cursor-grabbing transition-shadow transition-colors relative
                                                                     ${snapshot.isDragging ? 'z-50 shadow-2xl ring-2 ring-purple-500 border-none rounded-xl' : ''} ${isOverLimit ? 'ring-inset ring-2 ring-red-500' : ''} ${isEditedCol ? 'ring-inset ring-4 ring-blue-500 z-30' : ''}`}
                                                                 // Używamy zmiennej COLUMN_WIDTH
                                                                 style={{ width: `${COLUMN_WIDTH}px`, minWidth: `${COLUMN_WIDTH}px`, backgroundColor: isEditedCol ? '#eff6ff' : (isOverLimit ? '#fef2f2' : (liveColColor || '#ffffff')), borderColor: isEditedCol ? '#3b82f6' : (isOverLimit ? '#ef4444' : (liveColColor && liveColColor !== '#ffffff' ? liveColColor : '#e5e7eb')), ...provided.draggableProps.style }}
-=======
-                                                                className={`group w-[360px] h-full flex-shrink-0 border-r-2 flex flex-col items-center justify-center select-none cursor-grab active:cursor-grabbing transition-shadow transition-colors relative
-                                                                    ${snapshot.isDragging ? 'z-50 shadow-2xl ring-2 ring-purple-500 border-none rounded-xl' : ''} ${isOverLimit ? 'ring-inset ring-2 ring-red-500' : ''}`}
-                                                                style={{ backgroundColor: isOverLimit ? '#fef2f2' : (liveColColor || '#ffffff'), borderColor: isOverLimit ? '#ef4444' : (liveColColor && liveColColor !== '#ffffff' ? liveColColor : '#e5e7eb'), ...provided.draggableProps.style }}
->>>>>>> f62be26 (update UI i funkcjonalnosci)
                                                             >
                                                                 <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
                                                                 <div className="flex flex-col items-center justify-center w-full px-4 mt-2 relative z-10">
@@ -887,13 +645,8 @@ const KanbanBoard = () => {
                                                                     if (isDeletingSidebar || isClearingSidebar) return;
                                                                     openPanel('view', 'row', row, null, true); 
                                                                 }}
-<<<<<<< HEAD
                                                                 className={`group w-56 flex-shrink-0 border-r-2 border-gray-200 p-6 flex flex-col items-center justify-center text-center cursor-grab active:cursor-grabbing transition-colors select-none relative ${isEditedRow ? 'ring-inset ring-4 ring-blue-500 z-30' : ''}`}
                                                                 style={{ backgroundColor: isEditedRow ? '#eff6ff' : liveRowColor }}
-=======
-                                                                className="group w-56 flex-shrink-0 border-r-2 border-gray-200 p-6 flex flex-col items-center justify-center text-center cursor-grab active:cursor-grabbing transition-colors select-none relative"
-                                                                style={{ backgroundColor: liveRowColor }}
->>>>>>> f62be26 (update UI i funkcjonalnosci)
                                                             >
                                                                 <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
                                                                 <span className="font-black text-sm uppercase tracking-widest text-gray-900 drop-shadow-sm mb-2 relative z-10">{row.title}</span>
@@ -941,188 +694,6 @@ const KanbanBoard = () => {
                     />
                 )}
             </div>
-=======
-        return col.items.filter(item => item.rowId === rowId);
-    };
-
-<<<<<<< HEAD
-    return (
-        <div className="h-full flex flex-col w-full bg-white relative">
-            <DragDropContext onDragEnd={handleDragEnd}>
-                <div className="flex-1 overflow-auto p-6">
-                    <div className="inline-block min-w-full">
-                        
-                        {/* Headers (Columns) */}
-                        <div className="flex sticky top-0 z-20 mb-4">
-                             <div className="w-48 flex-shrink-0 p-4 border-r border-b border-gray-100 flex items-end bg-white">
-                                 <button onClick={() => addRow('Nowy wiersz')} className="text-xs text-purple-600 font-bold hover:underline">+ Dodaj Wiersz</button>
-                             </div>
-                             
-                             {columns.map(col => (
-                                 <div key={col.id} className="w-72 flex-shrink-0 mx-2 p-3 rounded-lg shadow-sm group relative" style={{ backgroundColor: col.color || '#f3f4f6' }}>
-                                     <div className="flex justify-between items-center">
-                                         <h3 className="font-bold text-sm tracking-wide">{col.title}</h3>
-                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                             <button onClick={() => {
-                                                 const newColor = prompt('Podaj kolor (np. #ff0000)', col.color || '');
-                                                 if (newColor !== null) updateColumn(col.id, { color: newColor });
-                                             }} className="p-1 hover:bg-black/10 rounded"><Edit2 size={14}/></button>
-                                             <button onClick={() => handleDeleteAttempt('column', col.id, col.items.length > 0)} className="p-1 hover:bg-red-500/20 text-red-600 rounded"><Trash2 size={14}/></button>
-                                         </div>
-                                     </div>
-                                 </div>
-                             ))}
-                             <button onClick={() => addColumn('Nowa kolumna')} className="w-12 mx-2 flex items-center justify-center bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-100"><Plus size={20}/></button>
-                        </div>
-
-                        {/* Rows */}
-                        {[...rows, {id: null, title: 'Brak przypisania', color: '#ffffff'}].map(row => (
-                            <div key={row.id || 'unassigned'} className="flex mb-4 relative">
-                                {/* Row Header */}
-                                <div className="w-48 flex-shrink-0 p-4 rounded-lg shadow-sm z-10 mr-2 flex flex-col justify-center group" style={{ backgroundColor: row.color || '#f3f4f6' }}>
-                                    <span className="font-bold text-sm">{row.title}</span>
-                                    {row.id && (
-                                        <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100">
-                                            <button onClick={() => updateRow(row.id!, { color: prompt('Kolor:', row.color || '') || undefined })} className="p-1 hover:bg-black/10 rounded"><Edit2 size={12}/></button>
-                                            <button onClick={() => handleDeleteAttempt('row', row.id!, columns.some(c => c.items.some(i => i.rowId === row.id)))} className="p-1 hover:bg-red-500/20 text-red-600 rounded"><Trash2 size={12}/></button>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Cells */}
-                                {columns.map(col => {
-                                    const items = getItems(col.id, row.id);
-                                    const droppableId = `cell-${col.id}-${row.id}`;
-                                    
-                                    return (
-                                        <Droppable key={droppableId} droppableId={droppableId}>
-                                            {(provided, snapshot) => (
-                                                <div 
-                                                    ref={provided.innerRef}
-                                                    {...provided.droppableProps}
-                                                    className={`w-72 flex-shrink-0 mx-2 p-2 rounded-lg border-2 transition-colors duration-200 flex flex-col gap-3 min-h-[120px] group/cell
-                                                        ${snapshot.isDraggingOver ? 'border-purple-400 bg-purple-50/50' : 'border-transparent'}
-                                                    `}
-                                                    style={{ backgroundColor: col.color ? `${col.color}40` : (row.color ? `${row.color}40` : '#f9fafb') }}
-                                                >
-                                                    {items.map((item, idx) => (
-                                                        <Task key={item.id} item={item} index={idx} columns={columns} rows={rows} />
-                                                    ))}
-                                                    {provided.placeholder}
-
-                                                    {/* Przycisk dodawania zadania */}
-                                                    {addingToCell?.colId === col.id && addingToCell?.rowId === row.id ? (
-                                                        <div className="bg-white p-3 rounded-xl border border-purple-200 shadow-lg mt-auto animate-in fade-in zoom-in duration-200 flex flex-col gap-2">
-                                                            <input 
-                                                                autoFocus
-                                                                className="w-full text-sm font-bold outline-none border-b border-gray-100 pb-1 bg-transparent placeholder:font-normal"
-                                                                placeholder="Tytuł zadania..."
-                                                                value={newTaskTitle}
-                                                                onChange={e => setNewTaskTitle(e.target.value)}
-                                                            />
-                                                            <textarea 
-                                                                className="w-full text-sm outline-none resize-none bg-transparent"
-                                                                placeholder="Opis zadania (opcjonalnie)..."
-                                                                rows={2}
-                                                                value={newTaskContent}
-                                                                onChange={e => setNewTaskContent(e.target.value)}
-                                                                onKeyDown={e => {
-                                                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                                                        e.preventDefault();
-                                                                        handleAddTask(col.id, row.id);
-                                                                    }
-                                                                }}
-                                                            />
-                                                            <div className="flex justify-end gap-2 mt-1">
-                                                                <button onClick={() => {
-                                                                    setAddingToCell(null);
-                                                                    setNewTaskTitle('');
-                                                                    setNewTaskContent('');
-                                                                }} className="p-1.5 text-gray-400 hover:text-gray-600 rounded bg-gray-50"><X size={14}/></button>
-                                                                <button onClick={() => handleAddTask(col.id, row.id)} className="px-3 py-1 bg-purple-600 text-white text-xs font-bold rounded-md hover:bg-purple-700">Dodaj</button>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <button 
-                                                            onClick={() => setAddingToCell({colId: col.id, rowId: row.id})}
-                                                            className="mt-auto w-full py-2 flex items-center justify-center gap-2 text-gray-400 hover:text-purple-600 hover:bg-white/60 rounded-lg border border-transparent hover:border-purple-200 transition-all opacity-0 group-hover/cell:opacity-100"
-                                                        >
-                                                            <Plus size={16} />
-                                                            <span className="text-xs font-bold">Dodaj zadanie</span>
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </Droppable>
-                                    );
-                                })}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </DragDropContext>
-
-            {/* Modal - Ostrzeżenie przy usuwaniu */}
-=======
-                    <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 w-40 h-40 rounded-full z-[200] transition-all duration-500 ease-out flex items-center justify-center bg-red-500/95 shadow-[0_10px_40px_rgba(239,68,68,0.6)] border-4 border-white backdrop-blur-md ${showTrash ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-75 invisible pointer-events-none'}`}>
-                        {['task', 'column', 'row'].map(dropType => (
-                            <Droppable key={`trash-${dropType}`} droppableId={`trash-${dropType}`} type={dropType} isDropDisabled={!showTrash}>
-                                {(provided, snapshot) => (
-                                    <div ref={provided.innerRef} {...provided.droppableProps} className={`absolute inset-0 rounded-full flex items-center justify-center transition-colors duration-200 overflow-hidden ${snapshot.isDraggingOver ? 'bg-red-600 shadow-inner' : 'bg-transparent'} ${dragState.type === dropType ? 'z-10' : 'z-0 pointer-events-none opacity-0'}`}>
-                                        {dragState.type === dropType && (
-                                            <div className={`flex flex-col items-center gap-1 transition-transform text-white ${snapshot.isDraggingOver ? 'scale-125' : 'scale-100'}`}>
-                                                <Trash2 size={40} />
-                                                <span className="font-bold text-[10px] uppercase tracking-widest text-red-100 text-center leading-tight">Drop to<br/>delete</span>
-                                            </div>
-                                        )}
-                                        <div className="hidden">{provided.placeholder}</div>
-                                    </div>
-                                )}
-                            </Droppable>
-                        ))}
-                    </div>
-                </DragDropContext>
-                
-                {(isDeletingSidebar || isClearingSidebar) && (
-                    <div 
-                        className="absolute inset-0 z-30 bg-black/40 backdrop-blur-sm transition-all duration-300 pointer-events-auto"
-                        onClick={() => {
-                            setIsDeletingSidebar(false);
-                            setIsClearingSidebar(false);
-                        }}
-                    />
-                )}
-            </div>
-<<<<<<< HEAD
-
->>>>>>> 8d94283 (update settings)
-            {deletePrompt && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                    <div className="bg-white p-6 rounded-xl shadow-xl flex flex-col max-w-sm w-full">
-                        <h3 className="text-lg font-bold mb-4 text-center">Co chcesz zrobić z przypisanymi taskami?</h3>
-                        <div className="flex flex-col gap-3">
-                            <button onClick={() => {
-                                deletePrompt.type === 'column' ? removeColumn(deletePrompt.id, 'move_tasks') : removeRow(deletePrompt.id, 'move_tasks');
-                                setDeletePrompt(null);
-                            }} className="py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold text-sm">
-                                Przenieś do innej kolumny/wiersza
-                            </button>
-                            <button onClick={() => {
-                                deletePrompt.type === 'column' ? removeColumn(deletePrompt.id, 'delete_tasks') : removeRow(deletePrompt.id, 'delete_tasks');
-                                setDeletePrompt(null);
-                            }} className="py-2 px-4 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-bold text-sm">
-                                Usuń wszystkie taski
-                            </button>
-                            <button onClick={() => setDeletePrompt(null)} className="py-2 px-4 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg font-bold text-sm mt-2">
-                                Anuluj
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
->>>>>>> 3fbcbef (adding working drag and drop)
-=======
->>>>>>> f62be26 (update UI i funkcjonalnosci)
         </div>
     );
 };
