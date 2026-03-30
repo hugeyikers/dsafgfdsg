@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-import { useKanbanStore, KanbanItem, KanbanColumn, KanbanRow } from '../../../store/useKanbanStore';
+import { KanbanItem, KanbanColumn, KanbanRow } from '../../../store/useKanbanStore';
 
 interface TaskProps {
     item: KanbanItem;
@@ -9,13 +9,11 @@ interface TaskProps {
     rows: KanbanRow[];
     onClick: () => void;
     onDoubleClick: () => void;
-    // Odbieramy nową funkcję do bezpiecznego wyświetlania panelu "About"
-    onHover?: (title: string | null, subtitle?: string) => void; 
+    isEditing?: boolean; 
+    onHover: (e: React.MouseEvent | null, title: string | null, subtitle?: string) => void;
 }
 
-const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClick, onHover }) => {
-    const { updateItem } = useKanbanStore();
-    const [isNativeDragOver, setIsNativeDragOver] = useState(false);
+const Task: React.FC<TaskProps> = ({ item, index, onClick, onDoubleClick, isEditing, onHover }) => {
 
     const handleClick = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -27,33 +25,8 @@ const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClic
         onDoubleClick();
     };
 
-    const handleNativeDragOver = (e: React.DragEvent) => { e.preventDefault(); };
-    const handleNativeDragEnter = (e: React.DragEvent) => { e.preventDefault(); setIsNativeDragOver(true); };
-    const handleNativeDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsNativeDragOver(false); };
-
-    const handleNativeDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsNativeDragOver(false);
-
-        const userIdStr = e.dataTransfer.getData('text/plain');
-        if (!userIdStr) return;
-
-        const userId = parseInt(userIdStr, 10);
-        if (isNaN(userId)) return;
-
-        if (item.assignedToId === userId) return;
-
-        const userTaskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === userId).length;
-        if (userTaskCount >= 5) {
-            alert(`USER LIMIT EXCEEDED!\n\nA maximum of 5 tasks per user is allowed.`);
-            return;
-        }
-
-        updateItem(item.id, { assignedToId: userId });
-    };
-
     return (
-        <Draggable draggableId={`item-${item.id}`} index={index}>
+        <Draggable draggableId={`task-${item.id}`} index={index}>
             {(provided, snapshot) => (
                 <div
                     ref={provided.innerRef}
@@ -62,23 +35,20 @@ const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClic
                     onClick={handleClick}
                     onDoubleClick={handleDoubleClick}
                     
-                    onDragOver={handleNativeDragOver}
-                    onDragEnter={handleNativeDragEnter}
-                    onDragLeave={handleNativeDragLeave}
-                    onDrop={handleNativeDrop}
-                    
                     // Podpięcie okienka "About"
-                    onMouseEnter={() => onHover && onHover(`Task: ${item.title}`, 'Double click to edit details')}
-                    onMouseLeave={() => onHover && onHover(null)}
+                    onMouseEnter={(e) => onHover(e, `Task: ${item.title}`, 'Double click to view or edit details')}
+                    onMouseLeave={(e) => onHover(e, null)}
 
-                    // ROZWIĄZANIE D&D: transition-all zamienione na transition-colors transition-shadow
-                    className={`relative w-full mb-3 p-3 flex flex-col justify-between rounded-xl border border-gray-200 group min-h-[90px] overflow-hidden cursor-pointer transition-colors transition-shadow duration-200
-                        ${snapshot.isDragging ? 'shadow-2xl z-50 ring-2 ring-purple-500' : 'shadow-sm hover:border-purple-400 hover:shadow-md'}
-                        ${isNativeDragOver ? 'ring-4 ring-blue-500 bg-blue-50 scale-105 z-40' : ''} 
+                    // CZYSTE KLASY CSS: Tylko bezpieczne kolory i cienie
+                    className={`relative w-full mb-3 p-3 flex flex-col justify-between rounded-xl border-2 transition-colors transition-shadow duration-200 select-none group min-h-[90px] overflow-hidden cursor-grab active:cursor-grabbing
+                        ${snapshot.isDragging ? 'shadow-2xl z-50 ring-2 ring-purple-500 border-transparent' : 'border-gray-200 hover:border-purple-300 hover:shadow-md'}
+                        ${isEditing && !snapshot.isDragging ? 'ring-2 ring-purple-500 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.4)] z-30' : ''}
                     `}
                     style={{ 
                         ...provided.draggableProps.style, 
-                        backgroundColor: isNativeDragOver ? '#eff6ff' : (item.color || '#ffffff') 
+                        backgroundColor: item.color || '#ffffff',
+                        borderLeftColor: item.color && item.color !== '#ffffff' ? item.color : undefined,
+                        borderLeftWidth: item.color && item.color !== '#ffffff' ? '6px' : '2px',
                     }}
                 >
                     <div className="flex items-center justify-center flex-1 px-1 mb-2 w-full text-center pointer-events-none relative z-20">
@@ -100,10 +70,6 @@ const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClic
                                 Unassigned
                             </div>
                         )}
-                    </div>
-
-                    <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 pl-8">
-                        <span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full backdrop-blur-sm">Double click to edit</span>
                     </div>
                 </div>
             )}
