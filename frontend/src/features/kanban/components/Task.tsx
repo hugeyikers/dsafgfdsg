@@ -15,8 +15,12 @@ interface TaskProps {
 <<<<<<< HEAD
     onClick: () => void;
     onDoubleClick: () => void;
+<<<<<<< HEAD
     onHover?: (title: string | null, subtitle?: string) => void;
     isEdited?: boolean;
+=======
+    onHover?: (title: string | null, subtitle?: string) => void; 
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
 }
 
 const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClick, onHover, isEdited }) => {
@@ -100,15 +104,24 @@ const Task: React.FC<TaskProps> = ({ item, index, columns, rows }) => {
                     onDrop={handleNativeDrop}
                     onMouseEnter={() => onHover && onHover(`Task: ${item.title}`, 'Double click to edit details')}
                     onMouseLeave={() => onHover && onHover(null)}
+<<<<<<< HEAD
                     className={`relative w-full mb-3 p-3 flex flex-col justify-between rounded-xl border border-gray-200 group min-h-[90px] cursor-pointer transition-all duration-200
+=======
+                    className={`relative w-full mb-3 p-3 flex flex-col justify-between rounded-xl border border-gray-200 group min-h-[90px] cursor-pointer transition-colors transition-shadow duration-200
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                         ${snapshot.isDragging ? 'shadow-2xl ring-2 ring-purple-500 border-transparent z-[9999]' : 'shadow-sm hover:border-purple-400 hover:shadow-md'}
                         ${isNativeDragOver ? 'ring-4 ring-blue-500 bg-blue-50 scale-105 z-40' : ''} 
                         ${isEdited && !snapshot.isDragging && !isNativeDragOver ? 'ring-4 ring-blue-500 border-transparent z-30 scale-[1.02]' : ''}
                     `}
                     style={{ 
                         ...provided.draggableProps.style, 
+<<<<<<< HEAD
                         backgroundColor: isNativeDragOver ? '#eff6ff' : (isEdited ? '#eff6ff' : (item.color || '#ffffff')),
                         zIndex: snapshot.isDragging ? 9999 : (isEdited ? 30 : undefined)
+=======
+                        backgroundColor: isNativeDragOver ? '#eff6ff' : (item.color || '#ffffff'),
+                        zIndex: snapshot.isDragging ? 9999 : undefined
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                     }}
                 >
                     <div className="flex items-center justify-center flex-1 px-1 mb-2 w-full text-center pointer-events-none relative z-20">

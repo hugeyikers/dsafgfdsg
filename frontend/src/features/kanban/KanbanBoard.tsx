@@ -16,6 +16,7 @@ import EditSidebar, { PanelState, PanelMode, PanelType } from './components/Edit
 =======
 import { Trash2, X } from 'lucide-react';
 
+<<<<<<< HEAD
 import EditSidebar from './components/EditSidebar';
 import DeletePromptModal from './components/DeletePromptModal';
 >>>>>>> 8d94283 (update settings)
@@ -23,6 +24,9 @@ import DeletePromptModal from './components/DeletePromptModal';
 // ============================================================================
 // SYSTEM ZMIENNYCH KONTROLUJĄCYCH WYMIARY (Edytuj te wartości!)
 // ============================================================================
+=======
+import EditSidebar, { PanelState, PanelMode, PanelType } from './components/EditSidebar';
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
 
 // 1. Szerokość pojedynczego kafelka zadania (w pikselach)
 const TASK_WIDTH = 180; 
@@ -56,10 +60,13 @@ const KanbanBoard = () => {
 =======
     const [showTrash, setShowTrash] = useState(false);
     const trashTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+<<<<<<< HEAD
 
     const [deletePrompt, setDeletePrompt] = useState<{type: PanelType, id: number, hasItems: boolean} | null>(null);
     const [targetMoveId, setTargetMoveId] = useState<number | 'unlabeled'>('unlabeled');
 >>>>>>> 8d94283 (update settings)
+=======
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
     
     const [filteredUserIds, setFilteredUserIds] = useState<number[]>([]);
     const [headerNode, setHeaderNode] = useState<HTMLElement | null>(null);
@@ -67,8 +74,11 @@ const KanbanBoard = () => {
     const [isDeletingSidebar, setIsDeletingSidebar] = useState(false);
     const [isClearingSidebar, setIsClearingSidebar] = useState(false);
     
+<<<<<<< HEAD
     const [pendingMove, setPendingMove] = useState<{itemId: number, targetColId: number, targetRowId: number | null} | null>(null);
 
+=======
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
     const [panel, setPanel] = useState<PanelState>({
         isOpen: false, type: 'task', mode: 'view', item: null
     });
@@ -109,7 +119,10 @@ const KanbanBoard = () => {
             setEditValue('');
             setIsDeletingSidebar(false);
             setIsClearingSidebar(false);
+<<<<<<< HEAD
             setPendingMove(null);
+=======
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
         }
     }, [panel.isOpen]);
 
@@ -263,9 +276,10 @@ const KanbanBoard = () => {
         if (destination.droppableId.startsWith('trash-')) {
             const id = parseInt(draggableId.split('-')[1]);
             if (type === 'task') {
-                if (window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) {
-                    removeItem(id);
-                    if (panel.item?.id === id) setPanel(prev => ({ ...prev, isOpen: false }));
+                const item = columns.flatMap(c => c.items).find(i => i.id === id);
+                if (item) {
+                    openPanel('view', 'task', item, null, false);
+                    setIsDeletingSidebar(true);
                 }
                 return;
             }
@@ -277,24 +291,10 @@ const KanbanBoard = () => {
                         return;
                     }
                 }
-
-                const hasItems = type === 'column' 
-                    ? (columns.find(c => c.id === id)?.items.length ?? 0) > 0
-                    : columns.some(c => c.items.some(i => i.rowId === id));
-
-                if (!hasItems) {
-                    if (window.confirm(`Are you sure you want to delete this ${type}?`)) {
-                        type === 'column' ? removeColumn(id) : removeRow(id);
-                        if (panel.item?.id === id) setPanel(prev => ({ ...prev, isOpen: false }));
-                    }
-                } else {
-                    if (type === 'column') {
-                        const availableCols = columns.filter(c => c.id !== id);
-                        setTargetMoveId(availableCols.length > 0 ? availableCols[0].id : 'unlabeled');
-                    } else {
-                        setTargetMoveId('unlabeled');
-                    }
-                    setDeletePrompt({ type: type as PanelType, id, hasItems });
+                const item = type === 'column' ? columns.find(c => c.id === id) : rows.find(r => r.id === id);
+                if (item) {
+                    openPanel('view', type as PanelType, item, null, false);
+                    setIsDeletingSidebar(true);
                 }
                 return;
             }
@@ -383,12 +383,16 @@ const KanbanBoard = () => {
         if (!panel.item) return;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
         let tasksToRemove: any[] = [];
         if (panel.type === 'column') {
             const col = columns.find(c => c.id === panel.item.id);
             if (col && col.items) tasksToRemove = col.items;
         } else if (panel.type === 'row') {
             tasksToRemove = columns.flatMap(c => c.items).filter(i => i.rowId === panel.item.id);
+<<<<<<< HEAD
         }
 
         if (tasksToRemove.length > 0) {
@@ -434,9 +438,19 @@ const KanbanBoard = () => {
 >>>>>>> 8d94283 (update settings)
             
             moveItem(itemId, targetColId, targetRowId);
+=======
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
         }
+
+        if (tasksToRemove.length > 0) {
+            tasksToRemove.forEach(task => removeItem(task.id));
+        }
+        
+        setPanel(prev => ({ ...prev, isOpen: false }));
+        setIsClearingSidebar(false);
     };
 
+<<<<<<< HEAD
     const handleDeleteAttempt = (type: 'column'|'row', id: number, hasItems: boolean) => {
         if (!hasItems) {
             if (window.confirm(`Czy na pewno chcesz usunąć ten ${type === 'column' ? 'kolumnę' : 'wiersz'}?`)) {
@@ -445,6 +459,12 @@ const KanbanBoard = () => {
         } else {
             setDeletePrompt({ type, id, hasItems });
         }
+=======
+    const closeSidebar = () => {
+        setPanel(prev => ({ ...prev, isOpen: false }));
+        setIsDeletingSidebar(false);
+        setIsClearingSidebar(false);
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
     };
 
     const handleAddTask = async (colId: number, rowId: number | null) => {
@@ -514,7 +534,11 @@ const KanbanBoard = () => {
                         <div 
                             ref={provided.innerRef}
                             {...provided.droppableProps}
+<<<<<<< HEAD
                             className={`flex-1 flex flex-col transition-colors h-full relative
+=======
+                            className={`flex-1 flex flex-col px-4 pt-4 transition-colors h-full relative
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                 ${snapshot.isDraggingOver ? (isOverLimit ? 'bg-red-500/10' : 'bg-black/5 shadow-inner') : ''}
                             `}
                             // Zastosowanie zmiennych do marginesów wewnątrz komórki (góra, dół, boki)
@@ -525,6 +549,7 @@ const KanbanBoard = () => {
                                 paddingBottom: `${CELL_PADDING_BOTTOM}px` 
                             }}
                         >
+<<<<<<< HEAD
                             {items.map((item, idx) => {
                                 const isEditedTask = panel.isOpen && panel.type === 'task' && panel.item?.id === item.id;
                                 return (
@@ -546,6 +571,25 @@ const KanbanBoard = () => {
                                     />
                                 );
                             })}
+=======
+                            {items.map((item, idx) => (
+                                <Task 
+                                    key={item.id} 
+                                    item={item} 
+                                    index={idx} 
+                                    columns={columns} 
+                                    rows={rows} 
+                                    onClick={() => { 
+                                        if (isDeletingSidebar || isClearingSidebar) return;
+                                        if (panel.isOpen) openPanel('view', 'task', item, null, false); 
+                                    }}
+                                    onDoubleClick={() => { 
+                                        if (isDeletingSidebar || isClearingSidebar) return;
+                                        openPanel('view', 'task', item, null, true); 
+                                    }}
+                                />
+                            ))}
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                             {provided.placeholder}
                         </div>
                     )}
@@ -620,12 +664,17 @@ const KanbanBoard = () => {
 
             <EditSidebar
 <<<<<<< HEAD
+<<<<<<< HEAD
                 panel={panel} 
                 setPanel={setPanel} 
 =======
                 panel={panel as any} 
                 setPanel={setPanel as any} 
 >>>>>>> 8d94283 (update settings)
+=======
+                panel={panel} 
+                setPanel={setPanel} 
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                 formData={formData} 
                 setFormData={setFormData}
                 activeField={activeField} 
@@ -638,11 +687,15 @@ const KanbanBoard = () => {
                 handleKeyDownDefault={handleKeyDownDefault}
                 handlePanelSaveGlobal={handlePanelSaveGlobal} 
 <<<<<<< HEAD
+<<<<<<< HEAD
                 handleClearTasks={handleClearTasks}
 =======
                 handlePanelDelete={handlePanelDelete}
                 handleClearBacklogTasks={handleClearBacklogTasks}
 >>>>>>> 8d94283 (update settings)
+=======
+                handleClearTasks={handleClearTasks}
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                 SIDEBAR_WIDTH={SIDEBAR_WIDTH} 
                 SIDEBAR_LEFT_PADDING={SIDEBAR_LEFT_PADDING}
                 SIDEBAR_RIGHT_PADDING={SIDEBAR_RIGHT_PADDING} 
@@ -653,15 +706,21 @@ const KanbanBoard = () => {
                 onAssigneeDrop={onAssigneeDrop}
                 dispatchHover={() => {}} 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                 isDeleting={isDeletingSidebar}
                 setIsDeleting={setIsDeletingSidebar}
                 isClearing={isClearingSidebar}
                 setIsClearing={setIsClearingSidebar}
+<<<<<<< HEAD
                 pendingMove={pendingMove}
                 setPendingMove={setPendingMove}
                 handleConfirmMove={handleConfirmMove}
 =======
 >>>>>>> 8d94283 (update settings)
+=======
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
             />
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
@@ -696,6 +755,7 @@ const KanbanBoard = () => {
                                     </div>
                                 </div>
                                  
+<<<<<<< HEAD
                                 {backlogColumn && (() => {
                                     const isEditedBacklog = panel.isOpen && panel.type === 'column' && panel.item?.id === backlogColumn.id;
                                     return (
@@ -719,6 +779,27 @@ const KanbanBoard = () => {
                                             <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                                                 <span className="text-[10px] italic text-gray-400 bg-white/70 px-2 py-0.5 rounded-full">Double click to view</span>
                                             </div>
+=======
+                                {backlogColumn && (
+                                    <div 
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            if (isDeletingSidebar || isClearingSidebar) return;
+                                            if (panel.isOpen) openPanel('view', 'column', backlogColumn, null, false); 
+                                        }}
+                                        onDoubleClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            if (isDeletingSidebar || isClearingSidebar) return;
+                                            openPanel('view', 'column', backlogColumn, null, true); 
+                                        }}
+                                        className="group w-[360px] h-full flex-shrink-0 border-r-2 border-dashed flex flex-col items-center justify-center transition-colors select-none cursor-pointer relative"
+                                        style={{ borderColor: '#d1d5db', backgroundColor: 'transparent' }}
+                                    >
+                                        <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
+                                        <h3 className="font-black text-sm tracking-widest uppercase text-center w-full truncate text-gray-400 px-4 relative z-10">{backlogColumn.title}</h3>
+                                        <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                                            <span className="text-[10px] italic text-gray-400 bg-white/70 px-2 py-0.5 rounded-full">Double click to view</span>
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                         </div>
                                     );
                                 })()}
@@ -746,10 +827,16 @@ const KanbanBoard = () => {
                                                                     if (isDeletingSidebar || isClearingSidebar) return;
                                                                     openPanel('view', 'column', col, null, true); 
                                                                 }}
+<<<<<<< HEAD
                                                                 className={`group flex-shrink-0 border-r-2 flex flex-col items-center justify-center select-none cursor-grab active:cursor-grabbing transition-shadow transition-colors relative
                                                                     ${snapshot.isDragging ? 'z-50 shadow-2xl ring-2 ring-purple-500 border-none rounded-xl' : ''} ${isOverLimit ? 'ring-inset ring-2 ring-red-500' : ''} ${isEditedCol ? 'ring-inset ring-4 ring-blue-500 z-30' : ''}`}
                                                                 // Używamy zmiennej COLUMN_WIDTH
                                                                 style={{ width: `${COLUMN_WIDTH}px`, minWidth: `${COLUMN_WIDTH}px`, backgroundColor: isEditedCol ? '#eff6ff' : (isOverLimit ? '#fef2f2' : (liveColColor || '#ffffff')), borderColor: isEditedCol ? '#3b82f6' : (isOverLimit ? '#ef4444' : (liveColColor && liveColColor !== '#ffffff' ? liveColColor : '#e5e7eb')), ...provided.draggableProps.style }}
+=======
+                                                                className={`group w-[360px] h-full flex-shrink-0 border-r-2 flex flex-col items-center justify-center select-none cursor-grab active:cursor-grabbing transition-shadow transition-colors relative
+                                                                    ${snapshot.isDragging ? 'z-50 shadow-2xl ring-2 ring-purple-500 border-none rounded-xl' : ''} ${isOverLimit ? 'ring-inset ring-2 ring-red-500' : ''}`}
+                                                                style={{ backgroundColor: isOverLimit ? '#fef2f2' : (liveColColor || '#ffffff'), borderColor: isOverLimit ? '#ef4444' : (liveColColor && liveColColor !== '#ffffff' ? liveColColor : '#e5e7eb'), ...provided.draggableProps.style }}
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                                             >
                                                                 <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
                                                                 <div className="flex flex-col items-center justify-center w-full px-4 mt-2 relative z-10">
@@ -800,8 +887,13 @@ const KanbanBoard = () => {
                                                                     if (isDeletingSidebar || isClearingSidebar) return;
                                                                     openPanel('view', 'row', row, null, true); 
                                                                 }}
+<<<<<<< HEAD
                                                                 className={`group w-56 flex-shrink-0 border-r-2 border-gray-200 p-6 flex flex-col items-center justify-center text-center cursor-grab active:cursor-grabbing transition-colors select-none relative ${isEditedRow ? 'ring-inset ring-4 ring-blue-500 z-30' : ''}`}
                                                                 style={{ backgroundColor: isEditedRow ? '#eff6ff' : liveRowColor }}
+=======
+                                                                className="group w-56 flex-shrink-0 border-r-2 border-gray-200 p-6 flex flex-col items-center justify-center text-center cursor-grab active:cursor-grabbing transition-colors select-none relative"
+                                                                style={{ backgroundColor: liveRowColor }}
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                                             >
                                                                 <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
                                                                 <span className="font-black text-sm uppercase tracking-widest text-gray-900 drop-shadow-sm mb-2 relative z-10">{row.title}</span>
@@ -990,7 +1082,18 @@ const KanbanBoard = () => {
                         ))}
                     </div>
                 </DragDropContext>
+                
+                {(isDeletingSidebar || isClearingSidebar) && (
+                    <div 
+                        className="absolute inset-0 z-30 bg-black/40 backdrop-blur-sm transition-all duration-300 pointer-events-auto"
+                        onClick={() => {
+                            setIsDeletingSidebar(false);
+                            setIsClearingSidebar(false);
+                        }}
+                    />
+                )}
             </div>
+<<<<<<< HEAD
 
 >>>>>>> 8d94283 (update settings)
             {deletePrompt && (
@@ -1018,6 +1121,8 @@ const KanbanBoard = () => {
                 </div>
             )}
 >>>>>>> 3fbcbef (adding working drag and drop)
+=======
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
         </div>
     );
 };

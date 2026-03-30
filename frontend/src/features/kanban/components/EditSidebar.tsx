@@ -35,9 +35,12 @@ export interface EditSidebarProps {
     setIsDeleting: React.Dispatch<React.SetStateAction<boolean>>;
     isClearing: boolean;
     setIsClearing: React.Dispatch<React.SetStateAction<boolean>>;
+<<<<<<< HEAD
     pendingMove: any;
     setPendingMove: React.Dispatch<React.SetStateAction<any>>;
     handleConfirmMove: () => void;
+=======
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
     SIDEBAR_WIDTH: number;
     SIDEBAR_LEFT_PADDING: number;
     SIDEBAR_RIGHT_PADDING: number;
@@ -52,7 +55,10 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
     startEdit, cancelEdit, saveEdit, handleKeyDownTitle, handleKeyDownDefault,
     handlePanelSaveGlobal, handleClearTasks, dispatchHover,
     onAssigneeDrop, isDeleting, setIsDeleting, isClearing, setIsClearing,
+<<<<<<< HEAD
     pendingMove, setPendingMove, handleConfirmMove,
+=======
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
     SIDEBAR_WIDTH, SIDEBAR_LEFT_PADDING, SIDEBAR_RIGHT_PADDING, DETAILS_FIELD_RADIUS,
     FOOTER_HEIGHT, FOOTER_LEFT_RATIO, FOOTER_RIGHT_RATIO
 }) => {
@@ -63,8 +69,11 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
     const [deleteAction, setDeleteAction] = useState<'move' | 'delete'>('move');
     const [isWipWarning, setIsWipWarning] = useState(false);
 
+<<<<<<< HEAD
     const showWipWarning = isWipWarning || pendingMove !== null;
 
+=======
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
     const isBacklogPanel = panel.type === 'column' && panel.item?.title === 'Backlog';
     const closeBtnMouseDown = React.useRef(false);
 
@@ -82,9 +91,13 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
     };
 
     useEffect(() => {
+<<<<<<< HEAD
         if (!panel.isOpen) {
             setIsWipWarning(false);
         }
+=======
+        if (!panel.isOpen) setIsWipWarning(false);
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
     }, [panel.isOpen]);
 
     useEffect(() => {
@@ -105,7 +118,11 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
     const handleAddClick = () => {
         if (panel.type === 'task' && panel.mode === 'add') {
             const targetCol = columns.find(c => c.id === panel.extra?.colId);
+<<<<<<< HEAD
             if (targetCol && targetCol.limit > 0 && targetCol.items.length >= targetCol.limit && !showWipWarning) {
+=======
+            if (targetCol && targetCol.limit > 0 && targetCol.items.length >= targetCol.limit && !isWipWarning) {
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                 setIsWipWarning(true);
                 return;
             }
@@ -155,7 +172,11 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                             <><Trash2 className="text-red-500" size={20}/> Delete {panel.type}</>
                         ) : isClearing ? (
                             <><Trash2 className="text-red-500" size={20}/> Clear Tasks</>
+<<<<<<< HEAD
                         ) : showWipWarning ? (
+=======
+                        ) : isWipWarning ? (
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                             <><AlertTriangle className="text-yellow-500" size={20}/> Limit Exceeded</>
                         ) : (
                             <><LayoutPanelLeft className="text-purple-500" size={20}/> {panel.mode === 'add' ? 'Add' : 'Details'} {panel.type}</>
@@ -167,7 +188,10 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                             setIsDeleting(false);
                             setIsClearing(false);
                             setIsWipWarning(false);
+<<<<<<< HEAD
                             setPendingMove(null);
+=======
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                         }} 
                         className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
                     >
@@ -196,20 +220,31 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                             </div>
 
                             {panel.type !== 'task' && hasItems && (
+<<<<<<< HEAD
                                 <div className="flex flex-col gap-3 mt-2">
                                     <label 
                                         className={`group relative flex items-center gap-3 border-2 shadow-sm cursor-pointer transition-colors ${deleteAction === 'move' ? 'border-purple-400 bg-purple-50' : 'border-gray-100 bg-white hover:border-purple-200'}`}
                                         style={{ borderRadius: DETAILS_FIELD_RADIUS, paddingLeft: '14px', paddingRight: '14px', minHeight: '56px' }}
                                     >
+=======
+                                <div className="flex flex-col gap-4 mt-2">
+                                    <label className={`flex items-center gap-3 cursor-pointer p-4 border-2 rounded-xl transition-colors ${deleteAction === 'move' ? 'border-purple-400 bg-purple-50/50' : 'border-gray-100 hover:border-purple-200'}`}>
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                         <input type="radio" checked={deleteAction === 'move'} onChange={() => setDeleteAction('move')} className="w-4 h-4 text-purple-600 focus:ring-purple-500" />
                                         <span className="text-sm font-bold text-gray-800">Move tasks to another {panel.type}</span>
                                     </label>
                                     
                                     {deleteAction === 'move' && (
+<<<<<<< HEAD
                                         <div className="pl-8 mb-1">
                                             <select
                                                 className="w-full text-sm font-bold border-2 border-gray-200 bg-white focus:outline-none focus:border-purple-400 shadow-sm cursor-pointer"
                                                 style={{ borderRadius: DETAILS_FIELD_RADIUS, paddingLeft: '14px', paddingRight: '30px', height: '56px' }}
+=======
+                                        <div className="pl-11 pr-2 -mt-2 mb-2">
+                                            <select
+                                                className="w-full text-sm font-bold border-2 border-gray-200 bg-white focus:outline-none focus:border-purple-500 rounded-xl px-4 py-3 shadow-sm cursor-pointer"
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                                 value={targetMoveId}
                                                 onChange={(e) => setTargetMoveId(e.target.value === 'unlabeled' ? 'unlabeled' : parseInt(e.target.value))}
                                             >
@@ -221,10 +256,14 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                         </div>
                                     )}
 
+<<<<<<< HEAD
                                     <label 
                                         className={`group relative flex items-center gap-3 border-2 shadow-sm cursor-pointer transition-colors ${deleteAction === 'delete' ? 'border-red-400 bg-red-50' : 'border-gray-100 bg-white hover:border-red-200'}`}
                                         style={{ borderRadius: DETAILS_FIELD_RADIUS, paddingLeft: '14px', paddingRight: '14px', minHeight: '56px' }}
                                     >
+=======
+                                    <label className={`flex items-center gap-3 cursor-pointer p-4 border-2 rounded-xl transition-colors ${deleteAction === 'delete' ? 'border-red-400 bg-red-50' : 'border-red-50 hover:border-red-200 bg-red-50/30'}`}>
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                         <input type="radio" checked={deleteAction === 'delete'} onChange={() => setDeleteAction('delete')} className="w-4 h-4 text-red-600 focus:ring-red-500" />
                                         <span className="text-sm font-bold text-red-600">Delete all tasks permanently</span>
                                     </label>
@@ -239,12 +278,20 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                 <span>Are you sure you want to permanently delete all tasks in this {isBacklogPanel ? 'Backlog' : panel.type}? This action is irreversible.</span>
                             </div>
                         </div>
+<<<<<<< HEAD
                     ) : showWipWarning ? (
+=======
+                    ) : isWipWarning ? (
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                         <div className="p-6 bg-yellow-50 rounded-2xl border-2 border-yellow-100 flex gap-4 text-yellow-800 text-base mt-2">
                             <AlertTriangle className="flex-shrink-0 mt-0.5" size={28} />
                             <div>
                                 <span className="font-black block mb-2 text-lg">WIP Limit Warning!</span>
+<<<<<<< HEAD
                                 <span>{pendingMove ? "Moving this task will exceed the column's Work-In-Progress limit. Are you sure you want to proceed?" : "Adding a new task will exceed the column's Work-In-Progress limit. Are you sure you want to proceed?"}</span>
+=======
+                                <span>Adding a new task will exceed the column's Work-In-Progress limit. Are you sure you want to proceed?</span>
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                             </div>
                         </div>
                     ) : (
@@ -532,14 +579,22 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                 </button>
                             </div>
                         </>
+<<<<<<< HEAD
                     ) : showWipWarning ? (
                         <>
                             <div style={{ width: `${SIDEBAR_WIDTH * FOOTER_LEFT_RATIO}px`, height: '100%' }}>
                                 <button key="btn-cancel-wip" onClick={() => { setIsWipWarning(false); setPendingMove(null); }} className="w-full h-full flex items-center justify-center bg-white text-gray-600 hover:text-gray-900 border-r border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer rounded-none outline-none select-none" title="Cancel">
+=======
+                    ) : isWipWarning ? (
+                        <>
+                            <div style={{ width: `${SIDEBAR_WIDTH * FOOTER_LEFT_RATIO}px`, height: '100%' }}>
+                                <button key="btn-cancel-wip" onClick={() => setIsWipWarning(false)} className="w-full h-full flex items-center justify-center bg-white text-gray-600 hover:text-gray-900 border-r border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer rounded-none outline-none select-none" title="Cancel">
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                     <X size={24}/>
                                 </button>
                             </div>
                             <div style={{ width: `${SIDEBAR_WIDTH * FOOTER_RIGHT_RATIO}px`, height: '100%', display: 'flex' }}>
+<<<<<<< HEAD
                                 <button key="btn-confirm-wip" onClick={() => { 
                                     if (pendingMove) {
                                         handleConfirmMove();
@@ -548,6 +603,9 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                         handlePanelSaveGlobal(); 
                                     }
                                 }} className="w-full h-full flex items-center justify-center bg-yellow-500 text-white text-xs font-bold hover:bg-yellow-600 transition-colors cursor-pointer rounded-none outline-none select-none">
+=======
+                                <button key="btn-confirm-wip" onClick={() => { setIsWipWarning(false); handlePanelSaveGlobal(); }} className="w-full h-full flex items-center justify-center bg-yellow-500 text-white text-xs font-bold hover:bg-yellow-600 transition-colors cursor-pointer rounded-none outline-none select-none">
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                     <Save size={18} className="mr-2"/> Proceed
                                 </button>
                             </div>
@@ -564,7 +622,11 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                         Discard
                                     </button>
                                 ) : panel.mode === 'view' && !isBacklogPanel ? (
+<<<<<<< HEAD
                                     <button key="btn-delete" onClick={() => setIsDeleting(true)} className="w-full h-full flex items-center justify-center text-red-500 bg-red-50 hover:text-red-600 hover:bg-red-100 transition-colors border-r border-gray-200 cursor-pointer rounded-none outline-none select-none" title={`Delete ${panel.type}`}>
+=======
+                                    <button key="btn-delete" onClick={() => setIsDeleting(true)} className="w-full h-full flex items-center justify-center text-gray-500 bg-gray-100 hover:text-red-600 hover:bg-red-50 transition-colors border-r border-gray-200 cursor-pointer rounded-none outline-none select-none" title={`Delete ${panel.type}`}>
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                         <Trash2 size={24}/>
                                     </button>
                                 ) : (
