@@ -10,6 +10,7 @@ import { useUserStore } from '../../store/useUserStore';
 import Task from './components/Task';
 import { Trash2, X } from 'lucide-react';
 
+<<<<<<< HEAD
 import EditSidebar from './components/EditSidebar';
 <<<<<<< HEAD
 import TeamSidebar from './components/TeamSidebar';
@@ -19,6 +20,9 @@ import DeletePromptModal from './components/DeletePromptModal';
 
 type PanelType = 'task' | 'column' | 'row';
 type PanelMode = 'view' | 'add' | 'delete' | 'clear'; 
+=======
+import EditSidebar, { PanelState, PanelMode, PanelType } from './components/EditSidebar';
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
 
 const SIDEBAR_LEFT_PADDING = 20;
 const SIDEBAR_RIGHT_PADDING = 20;
@@ -35,18 +39,24 @@ const KanbanBoard = () => {
     const [dragState, setDragState] = useState<{ isDragging: boolean; type: string | null }>({ isDragging: false, type: null });
     const [showTrash, setShowTrash] = useState(false);
     const trashTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+<<<<<<< HEAD
 
 <<<<<<< HEAD
     const [showUsersBar, setShowUsersBar] = useState(false);
 =======
     const [deletePrompt, setDeletePrompt] = useState<{type: PanelType, id: number, hasItems: boolean} | null>(null);
     const [targetMoveId, setTargetMoveId] = useState<number | 'unlabeled'>('unlabeled');
+=======
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
     
 >>>>>>> 8d94283 (update settings)
     const [filteredUserIds, setFilteredUserIds] = useState<number[]>([]);
     const [headerNode, setHeaderNode] = useState<HTMLElement | null>(null);
 
-    const [panel, setPanel] = useState<{ isOpen: boolean, type: PanelType, mode: PanelMode, item: any, extra?: any }>({
+    const [isDeletingSidebar, setIsDeletingSidebar] = useState(false);
+    const [isClearingSidebar, setIsClearingSidebar] = useState(false);
+    
+    const [panel, setPanel] = useState<PanelState>({
         isOpen: false, type: 'task', mode: 'view', item: null
     });
     
@@ -70,6 +80,8 @@ const KanbanBoard = () => {
         if (!panel.isOpen) {
             setActiveField(null);
             setEditValue('');
+            setIsDeletingSidebar(false);
+            setIsClearingSidebar(false);
         }
     }, [panel.isOpen]);
 
@@ -101,6 +113,8 @@ const KanbanBoard = () => {
         }
 
         setActiveField(null);
+        setIsDeletingSidebar(false);
+        setIsClearingSidebar(false);
         setPanel({ isOpen: true, mode, type, item, extra });
         setFormData({
             title: item?.title || '',
@@ -212,7 +226,15 @@ const KanbanBoard = () => {
             const id = parseInt(draggableId.split('-')[1]);
             
             if (type === 'task') {
+<<<<<<< HEAD
                 setPanel({ isOpen: true, mode: 'delete', type: 'task', item: { id } });
+=======
+                const item = columns.flatMap(c => c.items).find(i => i.id === id);
+                if (item) {
+                    openPanel('view', 'task', item, null, false);
+                    setIsDeletingSidebar(true);
+                }
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                 return;
             }
             if (type === 'column' || type === 'row') {
@@ -223,6 +245,7 @@ const KanbanBoard = () => {
                         return;
                     }
                 }
+<<<<<<< HEAD
 <<<<<<< HEAD
                 setPanel({ isOpen: true, mode: 'delete', type: type as PanelType, item: { id } });
 =======
@@ -244,6 +267,12 @@ const KanbanBoard = () => {
                         setTargetMoveId('unlabeled');
                     }
                     setDeletePrompt({ type: type as PanelType, id, hasItems });
+=======
+                const item = type === 'column' ? columns.find(c => c.id === id) : rows.find(r => r.id === id);
+                if (item) {
+                    openPanel('view', type as PanelType, item, null, false);
+                    setIsDeletingSidebar(true);
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                 }
 >>>>>>> 8d94283 (update settings)
                 return;
@@ -317,6 +346,7 @@ const KanbanBoard = () => {
         setPanel(prev => ({ ...prev, isOpen: false }));
     };
 
+<<<<<<< HEAD
     const confirmPanelDelete = (targetMoveId?: number | 'unlabeled' | 'delete') => {
         if (!panel.item) return;
 
@@ -382,6 +412,31 @@ const KanbanBoard = () => {
         }
 
         setPanel(prev => ({ ...prev, isOpen: false }));
+=======
+    const handleClearTasks = () => {
+        if (!panel.item) return;
+
+        let tasksToRemove: any[] = [];
+        if (panel.type === 'column') {
+            const col = columns.find(c => c.id === panel.item.id);
+            if (col && col.items) tasksToRemove = col.items;
+        } else if (panel.type === 'row') {
+            tasksToRemove = columns.flatMap(c => c.items).filter(i => i.rowId === panel.item.id);
+        }
+
+        if (tasksToRemove.length > 0) {
+            tasksToRemove.forEach(task => removeItem(task.id));
+        }
+        
+        setPanel(prev => ({ ...prev, isOpen: false }));
+        setIsClearingSidebar(false);
+    };
+
+    const closeSidebar = () => {
+        setPanel(prev => ({ ...prev, isOpen: false }));
+        setIsDeletingSidebar(false);
+        setIsClearingSidebar(false);
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
     };
 
     const getItems = (colId: number, rowId: number | null) => {
@@ -412,28 +467,51 @@ const KanbanBoard = () => {
                 key={droppableId}
                 className={`group w-[360px] flex-shrink-0 border-r-2 transition-colors duration-200 flex flex-col min-h-[140px] cursor-pointer relative
                     ${isBacklog ? 'border-dashed' : ''}
+<<<<<<< HEAD
                     ${isAddingToThisCell ? 'ring-inset ring-4 ring-purple-500 shadow-[inset_0_0_20px_rgba(168,85,247,0.3)] z-20' : (isOverLimit ? 'ring-inset ring-2 ring-red-400/50' : '')}
                     hover:brightness-[0.98]
+=======
+                    ${isOverLimit ? 'ring-inset ring-2 ring-red-400/50' : ''}
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                 `}
                 style={{ backgroundColor: cellBgColor, borderColor: isAddingToThisCell ? '#a855f7' : cellBorderColor }}
                 onClick={(e) => {
-                    if (e.target !== e.currentTarget && !(e.target as HTMLElement).closest('.flex-1')) return;
-                    if (panel.isOpen) openPanel('add', 'task', null, { colId: col.id, rowId }, false);
+                    e.stopPropagation();
+                    if (isDeletingSidebar || isClearingSidebar) return;
+                    const target = e.target as HTMLElement;
+                    if (target === e.currentTarget || target.classList.contains('flex-1') || target.closest('.group\\/empty')) {
+                        if (panel.isOpen) openPanel('add', 'task', null, { colId: col.id, rowId }, false);
+                    }
                 }}
                 onDoubleClick={(e) => {
-                    if (e.target !== e.currentTarget && !(e.target as HTMLElement).closest('.flex-1')) return;
-                    openPanel('add', 'task', null, { colId: col.id, rowId }, true);
+                    e.stopPropagation();
+                    if (isDeletingSidebar || isClearingSidebar) return;
+                    const target = e.target as HTMLElement;
+                    if (target === e.currentTarget || target.classList.contains('flex-1') || target.closest('.group\\/empty')) {
+                        openPanel('add', 'task', null, { colId: col.id, rowId }, true);
+                    }
                 }}
                 onMouseEnter={(e) => dispatchHover(e, `Cell in ${col.title}`, 'Double click to add a new task')}
                 onMouseLeave={(e) => dispatchHover(e, null)}
             >
+<<<<<<< HEAD
                 {/* W PEŁNI CZYSTY DROPPABLE (Gwarantuje działanie biblioteki D&D) */}
+=======
+                <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
+                
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                 <Droppable droppableId={droppableId} type="task">
                     {(provided, snapshot) => (
                         <div 
                             ref={provided.innerRef}
                             {...provided.droppableProps}
+<<<<<<< HEAD
                             className={`flex-1 flex flex-col px-4 pt-4 transition-colors ${snapshot.isDraggingOver ? (isOverLimit ? 'bg-red-500/10' : 'bg-black/5 shadow-inner') : ''}`}
+=======
+                            className={`flex-1 flex flex-col px-4 pt-4 transition-colors h-full relative
+                                ${snapshot.isDraggingOver ? (isOverLimit ? 'bg-red-500/10' : 'bg-black/5 shadow-inner') : ''}
+                            `}
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                         >
                             {items.map((item, idx) => (
                                 <Task 
@@ -442,20 +520,37 @@ const KanbanBoard = () => {
                                     index={idx} 
                                     columns={columns} 
                                     rows={rows} 
+<<<<<<< HEAD
                                     onClick={() => { if (panel.isOpen) openPanel('view', 'task', item, null, false); }}
                                     onDoubleClick={() => openPanel('view', 'task', item, null, true)}
                                     isEditing={panel.isOpen && panel.type === 'task' && panel.item?.id === item.id}
                                     onHover={dispatchHover}
+=======
+                                    onClick={() => { 
+                                        if (isDeletingSidebar || isClearingSidebar) return;
+                                        if (panel.isOpen) openPanel('view', 'task', item, null, false); 
+                                    }}
+                                    onDoubleClick={() => { 
+                                        if (isDeletingSidebar || isClearingSidebar) return;
+                                        openPanel('view', 'task', item, null, true); 
+                                    }}
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                 />
                             ))}
                             {provided.placeholder}
                         </div>
                     )}
                 </Droppable>
+<<<<<<< HEAD
 
                 {/* TEKST POZA DROPPABLE */}
                 <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
                     <span className="text-[11px] italic text-gray-400 bg-white/70 px-2 py-0.5 rounded-full">Double click to add task</span>
+=======
+                
+                <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none pl-8">
+                    <span className="text-[11px] italic text-gray-400 bg-white/80 px-2 py-0.5 rounded-full shadow-sm">Double click to add task</span>
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                 </div>
             </div>
         );
@@ -523,6 +618,7 @@ const KanbanBoard = () => {
 
             <EditSidebar
 <<<<<<< HEAD
+<<<<<<< HEAD
                 panel={panel} setPanel={setPanel} formData={formData} setFormData={setFormData}
                 activeField={activeField} editValue={editValue} setEditValue={setEditValue}
                 startEdit={startEdit} cancelEdit={cancelEdit} saveEdit={saveEdit}
@@ -537,6 +633,10 @@ const KanbanBoard = () => {
 =======
                 panel={panel as any} 
                 setPanel={setPanel as any} 
+=======
+                panel={panel} 
+                setPanel={setPanel} 
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                 formData={formData} 
                 setFormData={setFormData}
                 activeField={activeField} 
@@ -548,8 +648,7 @@ const KanbanBoard = () => {
                 handleKeyDownTitle={handleKeyDownTitle} 
                 handleKeyDownDefault={handleKeyDownDefault}
                 handlePanelSaveGlobal={handlePanelSaveGlobal} 
-                handlePanelDelete={handlePanelDelete}
-                handleClearBacklogTasks={handleClearBacklogTasks}
+                handleClearTasks={handleClearTasks}
                 SIDEBAR_WIDTH={SIDEBAR_WIDTH} 
                 SIDEBAR_LEFT_PADDING={SIDEBAR_LEFT_PADDING}
                 SIDEBAR_RIGHT_PADDING={SIDEBAR_RIGHT_PADDING} 
@@ -559,6 +658,7 @@ const KanbanBoard = () => {
                 FOOTER_RIGHT_RATIO={FOOTER_RIGHT_RATIO}
                 onAssigneeDrop={onAssigneeDrop}
                 dispatchHover={() => {}} 
+<<<<<<< HEAD
 >>>>>>> 8d94283 (update settings)
             />
 
@@ -569,13 +669,26 @@ const KanbanBoard = () => {
                     <div className="absolute inset-0 z-[100] bg-gray-900/10 backdrop-blur-[2px] pointer-events-auto transition-all duration-300" />
                 )}
 
+=======
+                isDeleting={isDeletingSidebar}
+                setIsDeleting={setIsDeletingSidebar}
+                isClearing={isClearingSidebar}
+                setIsClearing={setIsClearingSidebar}
+            />
+
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                 <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                    <div className="flex-1 overflow-auto p-4 pt-0 mt-4">
-                        <div id="kanban-board-container" className="inline-block min-w-full pb-20 bg-white border-2 border-gray-200 rounded-2xl shadow-sm overflow-hidden mt-16">
+                    <div 
+                        className="flex-1 overflow-auto p-4 pt-0 mt-4"
+                        onClick={() => { if (panel.isOpen && !isDeletingSidebar && !isClearingSidebar) closeSidebar(); }}
+                    >
+                        <div id="kanban-board-container" className="inline-block min-w-full pb-20 bg-white border-2 border-gray-200 rounded-2xl shadow-sm mt-16">
                             
                             <div className="flex sticky top-0 z-20 items-stretch border-b-2 border-gray-200 bg-white shadow-sm h-[88px]">
                                 <div className="w-56 h-full flex-shrink-0 border-r-2 border-gray-200 bg-white relative overflow-hidden group/corner">
                                     <button
+<<<<<<< HEAD
                                         onClick={(e) => { e.stopPropagation(); openPanel('add', 'column', null, null, false); }}
                                         onMouseEnter={(e) => dispatchHover(e, 'Add Column', 'Click to create a new stage')}
                                         onMouseLeave={(e) => dispatchHover(e, null)}
@@ -585,6 +698,21 @@ const KanbanBoard = () => {
                                         onClick={(e) => { e.stopPropagation(); openPanel('add', 'row', null, null, false); }}
                                         onMouseEnter={(e) => dispatchHover(e, 'Add Row', 'Click to create a new swimlane')}
                                         onMouseLeave={(e) => dispatchHover(e, null)}
+=======
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            if (isDeletingSidebar || isClearingSidebar) return;
+                                            openPanel('add', 'column', null, null, false); 
+                                        }}
+                                        className="absolute inset-0 w-full h-full text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors cursor-pointer outline-none font-black text-[12px] uppercase tracking-widest flex items-start justify-end pt-3.5 pr-4" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}
+                                    > Add Column &rarr; </button>
+                                    <button
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            if (isDeletingSidebar || isClearingSidebar) return;
+                                            openPanel('add', 'row', null, null, false); 
+                                        }}
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                         className="absolute inset-0 w-full h-full text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors cursor-pointer outline-none font-black text-[12px] uppercase tracking-widest flex items-end justify-start pb-3.5 pl-4 bg-gray-50/50" style={{ clipPath: 'polygon(0 0, 100% 100%, 0 100%)' }}
                                     > Add Row &darr; </button>
                                     <div className="absolute inset-0 pointer-events-none">
@@ -594,6 +722,7 @@ const KanbanBoard = () => {
                                  
                                 {backlogColumn && (
                                     <div 
+<<<<<<< HEAD
                                         onClick={(e) => { e.stopPropagation(); if (panel.isOpen) openPanel('view', 'column', backlogColumn, null, false); }}
                                         onDoubleClick={(e) => { e.stopPropagation(); openPanel('view', 'column', backlogColumn, null, true); }}
                                         onMouseEnter={(e) => dispatchHover(e, `Column: ${backlogColumn.title}`, 'Double click to view details')}
@@ -601,9 +730,24 @@ const KanbanBoard = () => {
                                         className={`group w-[360px] h-full flex-shrink-0 border-r-2 border-dashed flex flex-col items-center justify-center transition-colors select-none cursor-pointer relative
                                             ${panel.isOpen && panel.type === 'column' && panel.item?.id === backlogColumn.id ? 'ring-2 ring-purple-500 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.4)] z-30 bg-gray-50' : 'border-[#d1d5db] bg-transparent hover:bg-gray-50'}
                                         `}
+=======
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            if (isDeletingSidebar || isClearingSidebar) return;
+                                            if (panel.isOpen) openPanel('view', 'column', backlogColumn, null, false); 
+                                        }}
+                                        onDoubleClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            if (isDeletingSidebar || isClearingSidebar) return;
+                                            openPanel('view', 'column', backlogColumn, null, true); 
+                                        }}
+                                        className="group w-[360px] h-full flex-shrink-0 border-r-2 border-dashed flex flex-col items-center justify-center transition-colors select-none cursor-pointer relative"
+                                        style={{ borderColor: '#d1d5db', backgroundColor: 'transparent' }}
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                     >
-                                        <h3 className="font-black text-sm tracking-widest uppercase text-center w-full truncate text-gray-400 px-4">{backlogColumn.title}</h3>
-                                        <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                                        <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
+                                        <h3 className="font-black text-sm tracking-widest uppercase text-center w-full truncate text-gray-400 px-4 relative z-10">{backlogColumn.title}</h3>
+                                        <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                                             <span className="text-[10px] italic text-gray-400 bg-white/70 px-2 py-0.5 rounded-full">Double click to view</span>
                                         </div>
                                     </div>
@@ -621,6 +765,7 @@ const KanbanBoard = () => {
                                                         {(provided, snapshot) => (
                                                             <div 
                                                                 ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
+<<<<<<< HEAD
                                                                 onClick={(e) => { e.stopPropagation(); if (panel.isOpen) openPanel('view', 'column', col, null, false); }}
                                                                 onDoubleClick={(e) => { e.stopPropagation(); openPanel('view', 'column', col, null, true); }}
                                                                 onMouseEnter={(e) => dispatchHover(e, `Column: ${col.title}`, 'Drag to reorder / Double click to edit')}
@@ -630,9 +775,24 @@ const KanbanBoard = () => {
                                                                     ${isOverLimit ? 'ring-inset ring-2 ring-red-500 z-10' : ''}
                                                                     ${panel.isOpen && panel.type === 'column' && panel.item?.id === col.id && !snapshot.isDragging ? 'ring-2 ring-purple-500 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.4)] z-30' : 'hover:brightness-95'}
                                                                 `}
+=======
+                                                                onClick={(e) => { 
+                                                                    e.stopPropagation(); 
+                                                                    if (isDeletingSidebar || isClearingSidebar) return;
+                                                                    if (panel.isOpen) openPanel('view', 'column', col, null, false); 
+                                                                }}
+                                                                onDoubleClick={(e) => { 
+                                                                    e.stopPropagation(); 
+                                                                    if (isDeletingSidebar || isClearingSidebar) return;
+                                                                    openPanel('view', 'column', col, null, true); 
+                                                                }}
+                                                                className={`group w-[360px] h-full flex-shrink-0 border-r-2 flex flex-col items-center justify-center select-none cursor-grab active:cursor-grabbing transition-shadow transition-colors relative
+                                                                    ${snapshot.isDragging ? 'z-50 shadow-2xl ring-2 ring-purple-500 border-none rounded-xl' : ''} ${isOverLimit ? 'ring-inset ring-2 ring-red-500' : ''}`}
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                                                 style={{ backgroundColor: isOverLimit ? '#fef2f2' : (liveColColor || '#ffffff'), borderColor: isOverLimit ? '#ef4444' : (liveColColor && liveColColor !== '#ffffff' ? liveColColor : '#e5e7eb'), ...provided.draggableProps.style }}
                                                             >
-                                                                <div className="flex flex-col items-center justify-center w-full px-4 mt-2">
+                                                                <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
+                                                                <div className="flex flex-col items-center justify-center w-full px-4 mt-2 relative z-10">
                                                                     <h3 className={`font-black text-sm tracking-widest uppercase text-center w-full truncate ${isOverLimit ? 'text-red-600' : 'text-gray-900'}`}>{col.title}</h3>
                                                                     {col.limit > 0 && (
                                                                         <span className={`text-xs font-bold mt-2 px-3 py-1 rounded-full border ${isOverLimit ? 'bg-red-100 text-red-700 border-red-200' : 'bg-gray-100/80 text-gray-500 border-gray-200'}`}>
@@ -640,7 +800,7 @@ const KanbanBoard = () => {
                                                                         </span>
                                                                     )}
                                                                 </div>
-                                                                <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                                                                <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                                                                     <span className="text-[10px] italic text-gray-500 bg-white/70 px-2 py-0.5 rounded-full">Drag to reorder / Double click</span>
                                                                 </div>
                                                             </div>
@@ -668,6 +828,7 @@ const KanbanBoard = () => {
                                                         >
                                                             <div 
                                                                 {...provided.dragHandleProps}
+<<<<<<< HEAD
                                                                 onClick={(e) => { e.stopPropagation(); if (panel.isOpen) openPanel('view', 'row', row, null, false); }}
                                                                 onDoubleClick={(e) => { e.stopPropagation(); openPanel('view', 'row', row, null, true); }}
                                                                 onMouseEnter={(e) => dispatchHover(e, `Row: ${row.title}`, 'Drag to reorder / Double click to edit')}
@@ -675,10 +836,24 @@ const KanbanBoard = () => {
                                                                 className={`group w-56 flex-shrink-0 border-r-2 p-6 flex flex-col items-center justify-center text-center cursor-grab active:cursor-grabbing transition-colors select-none relative
                                                                     ${panel.isOpen && panel.type === 'row' && panel.item?.id === row.id && !snapshot.isDragging ? 'ring-2 ring-purple-500 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.4)] z-30' : 'border-gray-200 hover:brightness-95'}
                                                                 `}
+=======
+                                                                onClick={(e) => { 
+                                                                    e.stopPropagation(); 
+                                                                    if (isDeletingSidebar || isClearingSidebar) return;
+                                                                    if (panel.isOpen) openPanel('view', 'row', row, null, false); 
+                                                                }}
+                                                                onDoubleClick={(e) => { 
+                                                                    e.stopPropagation(); 
+                                                                    if (isDeletingSidebar || isClearingSidebar) return;
+                                                                    openPanel('view', 'row', row, null, true); 
+                                                                }}
+                                                                className="group w-56 flex-shrink-0 border-r-2 border-gray-200 p-6 flex flex-col items-center justify-center text-center cursor-grab active:cursor-grabbing transition-colors select-none relative"
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                                                 style={{ backgroundColor: liveRowColor }}
                                                             >
-                                                                <span className="font-black text-sm uppercase tracking-widest text-gray-900 drop-shadow-sm mb-2">{row.title}</span>
-                                                                <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                                                                <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
+                                                                <span className="font-black text-sm uppercase tracking-widest text-gray-900 drop-shadow-sm mb-2 relative z-10">{row.title}</span>
+                                                                <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                                                                     <span className="text-[10px] italic text-gray-500 bg-white/70 px-2 py-0.5 rounded-full">Drag to reorder / Double click</span>
                                                                 </div>
                                                             </div>
@@ -699,6 +874,7 @@ const KanbanBoard = () => {
 
                             <div className="flex relative border-b-2 border-gray-200 bg-white">
                                 <div 
+<<<<<<< HEAD
                                     onClick={(e) => { e.stopPropagation(); if (panel.isOpen) openPanel('view', 'row', { id: 'unlabeled', title: 'Unlabeled', color: '#ffffff' }, null, false); }}
                                     onDoubleClick={(e) => { e.stopPropagation(); openPanel('view', 'row', { id: 'unlabeled', title: 'Unlabeled', color: '#ffffff' }, null, true); }}
                                     onMouseEnter={(e) => dispatchHover(e, 'Row: Unlabeled', 'Double click to view details')}
@@ -706,6 +882,10 @@ const KanbanBoard = () => {
                                     className={`group w-56 flex-shrink-0 border-r-2 p-6 flex flex-col items-center justify-center text-center bg-gray-50/50 cursor-pointer transition-all relative
                                         ${panel.isOpen && panel.type === 'row' && panel.item?.id === 'unlabeled' ? 'ring-2 ring-purple-500 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.4)] z-30' : 'border-gray-200 hover:bg-gray-100'}
                                     `}
+=======
+                                    className="w-56 flex-shrink-0 border-r-2 border-gray-200 p-6 flex flex-col items-center justify-center text-center bg-gray-50/50"
+                                    onClick={(e) => e.stopPropagation()}
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                                 >
                                     <span className="font-black text-sm uppercase tracking-widest text-gray-400">Unlabeled</span>
                                     <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
@@ -714,7 +894,7 @@ const KanbanBoard = () => {
                                 </div>
                                 {backlogColumn && renderCell(backlogColumn, null, true, '#ffffff')}
                                 {draggableColumns.map(col => renderCell(col, null, false, '#ffffff'))}
-                                <div className="flex-1 bg-white border-b-2 border-transparent"></div>
+                                <div className="flex-1 bg-white border-b-2 border-transparent" onClick={(e) => e.stopPropagation()}></div>
                             </div>
                         </div>
                     </div>
@@ -750,7 +930,18 @@ const KanbanBoard = () => {
                         ))}
                     </div>
                 </DragDropContext>
+                
+                {(isDeletingSidebar || isClearingSidebar) && (
+                    <div 
+                        className="absolute inset-0 z-30 bg-black/40 backdrop-blur-sm transition-all duration-300 pointer-events-auto"
+                        onClick={() => {
+                            setIsDeletingSidebar(false);
+                            setIsClearingSidebar(false);
+                        }}
+                    />
+                )}
             </div>
+<<<<<<< HEAD
 
 <<<<<<< HEAD
             <TeamSidebar 
@@ -771,6 +962,8 @@ const KanbanBoard = () => {
                 />
             )}
 >>>>>>> 8d94283 (update settings)
+=======
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
         </div>
     );
 };

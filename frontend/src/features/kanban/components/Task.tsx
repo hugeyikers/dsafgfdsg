@@ -9,8 +9,12 @@ interface TaskProps {
     rows: KanbanRow[];
     onClick: () => void;
     onDoubleClick: () => void;
+<<<<<<< HEAD
     isEditing?: boolean; 
     onHover: (e: React.MouseEvent | null, title: string | null, subtitle?: string) => void;
+=======
+    onHover?: (title: string | null, subtitle?: string) => void; 
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
 }
 
 const Task: React.FC<TaskProps> = ({ item, index, onClick, onDoubleClick, isEditing, onHover }) => {
@@ -34,6 +38,7 @@ const Task: React.FC<TaskProps> = ({ item, index, onClick, onDoubleClick, isEdit
                     {...provided.dragHandleProps}
                     onClick={handleClick}
                     onDoubleClick={handleDoubleClick}
+<<<<<<< HEAD
                     
                     // Podpięcie okienka "About"
                     onMouseEnter={(e) => onHover(e, `Task: ${item.title}`, 'Double click to view or edit details')}
@@ -49,6 +54,22 @@ const Task: React.FC<TaskProps> = ({ item, index, onClick, onDoubleClick, isEdit
                         backgroundColor: item.color || '#ffffff',
                         borderLeftColor: item.color && item.color !== '#ffffff' ? item.color : undefined,
                         borderLeftWidth: item.color && item.color !== '#ffffff' ? '6px' : '2px',
+=======
+                    onDragOver={handleNativeDragOver}
+                    onDragEnter={handleNativeDragEnter}
+                    onDragLeave={handleNativeDragLeave}
+                    onDrop={handleNativeDrop}
+                    onMouseEnter={() => onHover && onHover(`Task: ${item.title}`, 'Double click to edit details')}
+                    onMouseLeave={() => onHover && onHover(null)}
+                    className={`relative w-full mb-3 p-3 flex flex-col justify-between rounded-xl border border-gray-200 group min-h-[90px] cursor-pointer transition-colors transition-shadow duration-200
+                        ${snapshot.isDragging ? 'shadow-2xl ring-2 ring-purple-500 border-transparent z-[9999]' : 'shadow-sm hover:border-purple-400 hover:shadow-md'}
+                        ${isNativeDragOver ? 'ring-4 ring-blue-500 bg-blue-50 scale-105 z-40' : ''} 
+                    `}
+                    style={{ 
+                        ...provided.draggableProps.style, 
+                        backgroundColor: isNativeDragOver ? '#eff6ff' : (item.color || '#ffffff'),
+                        zIndex: snapshot.isDragging ? 9999 : undefined
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                     }}
                 >
                     <div className="flex items-center justify-center flex-1 px-1 mb-2 w-full text-center pointer-events-none relative z-20">
@@ -71,6 +92,13 @@ const Task: React.FC<TaskProps> = ({ item, index, onClick, onDoubleClick, isEdit
                             </div>
                         )}
                     </div>
+<<<<<<< HEAD
+=======
+
+                    <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 pl-8">
+                        <span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full backdrop-blur-sm border border-gray-100 shadow-sm">Double click</span>
+                    </div>
+>>>>>>> f62be26 (update UI i funkcjonalnosci)
                 </div>
             )}
         </Draggable>
