@@ -6,11 +6,7 @@ import { useUserStore } from '../../store/useUserStore';
 import Task from './components/Task';
 import { Trash2, X } from 'lucide-react';
 
-import EditSidebar from './components/EditSidebar';
-import DeletePromptModal from './components/DeletePromptModal';
-
-type PanelType = 'task' | 'column' | 'row';
-type PanelMode = 'view' | 'add'; 
+import EditSidebar, { PanelState, PanelMode, PanelType } from './components/EditSidebar';
 
 const SIDEBAR_LEFT_PADDING = 20;
 const SIDEBAR_RIGHT_PADDING = 20;
@@ -29,14 +25,14 @@ const KanbanBoard = () => {
     const [dragState, setDragState] = useState<{ isDragging: boolean; type: string | null }>({ isDragging: false, type: null });
     const [showTrash, setShowTrash] = useState(false);
     const trashTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    const [deletePrompt, setDeletePrompt] = useState<{type: PanelType, id: number, hasItems: boolean} | null>(null);
-    const [targetMoveId, setTargetMoveId] = useState<number | 'unlabeled'>('unlabeled');
     
     const [filteredUserIds, setFilteredUserIds] = useState<number[]>([]);
     const [headerNode, setHeaderNode] = useState<HTMLElement | null>(null);
 
-    const [panel, setPanel] = useState<{ isOpen: boolean, type: PanelType, mode: PanelMode, item: any, extra?: any }>({
+    const [isDeletingSidebar, setIsDeletingSidebar] = useState(false);
+    const [isClearingSidebar, setIsClearingSidebar] = useState(false);
+    
+    const [panel, setPanel] = useState<PanelState>({
         isOpen: false, type: 'task', mode: 'view', item: null
     });
     
@@ -54,6 +50,8 @@ const KanbanBoard = () => {
         if (!panel.isOpen) {
             setActiveField(null);
             setEditValue('');
+            setIsDeletingSidebar(false);
+            setIsClearingSidebar(false);
         }
     }, [panel.isOpen]);
 
@@ -85,6 +83,8 @@ const KanbanBoard = () => {
         }
 
         setActiveField(null);
+        setIsDeletingSidebar(false);
+        setIsClearingSidebar(false);
         setPanel({ isOpen: true, mode, type, item, extra });
         setFormData({
             title: item?.title || '',
@@ -207,9 +207,10 @@ const KanbanBoard = () => {
         if (destination.droppableId.startsWith('trash-')) {
             const id = parseInt(draggableId.split('-')[1]);
             if (type === 'task') {
-                if (window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) {
-                    removeItem(id);
-                    if (panel.item?.id === id) setPanel(prev => ({ ...prev, isOpen: false }));
+                const item = columns.flatMap(c => c.items).find(i => i.id === id);
+                if (item) {
+                    openPanel('view', 'task', item, null, false);
+                    setIsDeletingSidebar(true);
                 }
                 return;
             }
@@ -221,24 +222,10 @@ const KanbanBoard = () => {
                         return;
                     }
                 }
-
-                const hasItems = type === 'column' 
-                    ? (columns.find(c => c.id === id)?.items.length ?? 0) > 0
-                    : columns.some(c => c.items.some(i => i.rowId === id));
-
-                if (!hasItems) {
-                    if (window.confirm(`Are you sure you want to delete this ${type}?`)) {
-                        type === 'column' ? removeColumn(id) : removeRow(id);
-                        if (panel.item?.id === id) setPanel(prev => ({ ...prev, isOpen: false }));
-                    }
-                } else {
-                    if (type === 'column') {
-                        const availableCols = columns.filter(c => c.id !== id);
-                        setTargetMoveId(availableCols.length > 0 ? availableCols[0].id : 'unlabeled');
-                    } else {
-                        setTargetMoveId('unlabeled');
-                    }
-                    setDeletePrompt({ type: type as PanelType, id, hasItems });
+                const item = type === 'column' ? columns.find(c => c.id === id) : rows.find(r => r.id === id);
+                if (item) {
+                    openPanel('view', type as PanelType, item, null, false);
+                    setIsDeletingSidebar(true);
                 }
                 return;
             }
@@ -311,44 +298,29 @@ const KanbanBoard = () => {
         setPanel(prev => ({ ...prev, isOpen: false }));
     };
 
-    const handlePanelDelete = () => {
+    const handleClearTasks = () => {
         if (!panel.item) return;
 
-        if (panel.type === 'task') {
-            if (window.confirm("Are you sure you want to delete this task? This action cannot be undone.")) {
-                removeItem(panel.item.id);
-                setPanel(prev => ({ ...prev, isOpen: false }));
-            }
-        } else {
-            if (panel.type === 'column' && panel.item.title === 'Backlog') return;
-            const hasItems = panel.type === 'column' 
-                ? (columns.find(c => c.id === panel.item.id)?.items.length ?? 0) > 0
-                : columns.some(c => c.items.some(i => i.rowId === panel.item.id));
-            
-            setPanel(prev => ({ ...prev, isOpen: false }));
-            
-            if (!hasItems) {
-                if (window.confirm(`Are you sure you want to delete this ${panel.type}?`)) {
-                    panel.type === 'column' ? removeColumn(panel.item.id) : removeRow(panel.item.id);
-                }
-            } else {
-                if (panel.type === 'column') {
-                    const availableCols = columns.filter(c => c.id !== panel.item.id);
-                    setTargetMoveId(availableCols.length > 0 ? availableCols[0].id : 'unlabeled');
-                } else {
-                    setTargetMoveId('unlabeled');
-                }
-                setDeletePrompt({ type: panel.type, id: panel.item.id, hasItems });
-            }
+        let tasksToRemove: any[] = [];
+        if (panel.type === 'column') {
+            const col = columns.find(c => c.id === panel.item.id);
+            if (col && col.items) tasksToRemove = col.items;
+        } else if (panel.type === 'row') {
+            tasksToRemove = columns.flatMap(c => c.items).filter(i => i.rowId === panel.item.id);
         }
+
+        if (tasksToRemove.length > 0) {
+            tasksToRemove.forEach(task => removeItem(task.id));
+        }
+        
+        setPanel(prev => ({ ...prev, isOpen: false }));
+        setIsClearingSidebar(false);
     };
 
-    const handleClearBacklogTasks = () => {
-        if (!panel.item || !panel.item.items || panel.item.items.length === 0) return;
-        if (window.confirm("Are you sure you want to permanently delete all tasks in the Backlog? This action cannot be undone.")) {
-            panel.item.items.forEach((task: any) => removeItem(task.id));
-            setPanel(prev => ({ ...prev, isOpen: false }));
-        }
+    const closeSidebar = () => {
+        setPanel(prev => ({ ...prev, isOpen: false }));
+        setIsDeletingSidebar(false);
+        setIsClearingSidebar(false);
     };
 
     const getItems = (colId: number, rowId: number | null) => {
@@ -378,24 +350,33 @@ const KanbanBoard = () => {
                 className={`group w-[360px] flex-shrink-0 border-r-2 transition-colors duration-200 flex flex-col min-h-[140px] cursor-pointer relative
                     ${isBacklog ? 'border-dashed' : ''}
                     ${isOverLimit ? 'ring-inset ring-2 ring-red-400/50' : ''}
-                    hover:brightness-[0.98]
                 `}
                 style={{ backgroundColor: cellBgColor, borderColor: cellBorderColor }}
                 onClick={(e) => {
-                    if (e.target !== e.currentTarget && !(e.target as HTMLElement).closest('.flex-1')) return;
-                    if (panel.isOpen) openPanel('add', 'task', null, { colId: col.id, rowId }, false);
+                    e.stopPropagation();
+                    if (isDeletingSidebar || isClearingSidebar) return;
+                    const target = e.target as HTMLElement;
+                    if (target === e.currentTarget || target.classList.contains('flex-1') || target.closest('.group\\/empty')) {
+                        if (panel.isOpen) openPanel('add', 'task', null, { colId: col.id, rowId }, false);
+                    }
                 }}
                 onDoubleClick={(e) => {
-                    if (e.target !== e.currentTarget && !(e.target as HTMLElement).closest('.flex-1')) return;
-                    openPanel('add', 'task', null, { colId: col.id, rowId }, true);
+                    e.stopPropagation();
+                    if (isDeletingSidebar || isClearingSidebar) return;
+                    const target = e.target as HTMLElement;
+                    if (target === e.currentTarget || target.classList.contains('flex-1') || target.closest('.group\\/empty')) {
+                        openPanel('add', 'task', null, { colId: col.id, rowId }, true);
+                    }
                 }}
             >
+                <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
+                
                 <Droppable droppableId={droppableId} type="task">
                     {(provided, snapshot) => (
                         <div 
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-                            className={`flex-1 flex flex-col px-4 pt-4 transition-colors h-full
+                            className={`flex-1 flex flex-col px-4 pt-4 transition-colors h-full relative
                                 ${snapshot.isDraggingOver ? (isOverLimit ? 'bg-red-500/10' : 'bg-black/5 shadow-inner') : ''}
                             `}
                         >
@@ -406,20 +387,24 @@ const KanbanBoard = () => {
                                     index={idx} 
                                     columns={columns} 
                                     rows={rows} 
-                                    onClick={() => { if (panel.isOpen) openPanel('view', 'task', item, null, false); }}
-                                    onDoubleClick={() => openPanel('view', 'task', item, null, true)}
+                                    onClick={() => { 
+                                        if (isDeletingSidebar || isClearingSidebar) return;
+                                        if (panel.isOpen) openPanel('view', 'task', item, null, false); 
+                                    }}
+                                    onDoubleClick={() => { 
+                                        if (isDeletingSidebar || isClearingSidebar) return;
+                                        openPanel('view', 'task', item, null, true); 
+                                    }}
                                 />
                             ))}
                             {provided.placeholder}
-                            
-                            <div className="flex-1 min-h-[50px] group/empty relative mt-2">
-                                <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover/empty:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-                                    <span className="text-[11px] italic text-gray-400 bg-white/70 px-2 py-0.5 rounded-full">Double click to add task</span>
-                                </div>
-                            </div>
                         </div>
                     )}
                 </Droppable>
+                
+                <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none pl-8">
+                    <span className="text-[11px] italic text-gray-400 bg-white/80 px-2 py-0.5 rounded-full shadow-sm">Double click to add task</span>
+                </div>
             </div>
         );
     };
@@ -481,8 +466,8 @@ const KanbanBoard = () => {
             {renderTeamBar()}
 
             <EditSidebar
-                panel={panel as any} 
-                setPanel={setPanel as any} 
+                panel={panel} 
+                setPanel={setPanel} 
                 formData={formData} 
                 setFormData={setFormData}
                 activeField={activeField} 
@@ -494,8 +479,7 @@ const KanbanBoard = () => {
                 handleKeyDownTitle={handleKeyDownTitle} 
                 handleKeyDownDefault={handleKeyDownDefault}
                 handlePanelSaveGlobal={handlePanelSaveGlobal} 
-                handlePanelDelete={handlePanelDelete}
-                handleClearBacklogTasks={handleClearBacklogTasks}
+                handleClearTasks={handleClearTasks}
                 SIDEBAR_WIDTH={SIDEBAR_WIDTH} 
                 SIDEBAR_LEFT_PADDING={SIDEBAR_LEFT_PADDING}
                 SIDEBAR_RIGHT_PADDING={SIDEBAR_RIGHT_PADDING} 
@@ -505,22 +489,37 @@ const KanbanBoard = () => {
                 FOOTER_RIGHT_RATIO={FOOTER_RIGHT_RATIO}
                 onAssigneeDrop={onAssigneeDrop}
                 dispatchHover={() => {}} 
+                isDeleting={isDeletingSidebar}
+                setIsDeleting={setIsDeletingSidebar}
+                isClearing={isClearingSidebar}
+                setIsClearing={setIsClearingSidebar}
             />
 
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                    <div className="flex-1 overflow-auto p-4 pt-0 mt-4">
-                        <div id="kanban-board-container" className="inline-block min-w-full pb-20 bg-white border-2 border-gray-200 rounded-2xl shadow-sm overflow-hidden mt-16">
+                    <div 
+                        className="flex-1 overflow-auto p-4 pt-0 mt-4"
+                        onClick={() => { if (panel.isOpen && !isDeletingSidebar && !isClearingSidebar) closeSidebar(); }}
+                    >
+                        <div id="kanban-board-container" className="inline-block min-w-full pb-20 bg-white border-2 border-gray-200 rounded-2xl shadow-sm mt-16">
                             
                             <div className="flex sticky top-0 z-20 items-stretch border-b-2 border-gray-200 bg-white shadow-sm h-[88px]">
                                 
                                 <div className="w-56 h-full flex-shrink-0 border-r-2 border-gray-200 bg-white relative overflow-hidden group/corner">
                                     <button
-                                        onClick={(e) => { e.stopPropagation(); openPanel('add', 'column', null, null, false); }}
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            if (isDeletingSidebar || isClearingSidebar) return;
+                                            openPanel('add', 'column', null, null, false); 
+                                        }}
                                         className="absolute inset-0 w-full h-full text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors cursor-pointer outline-none font-black text-[12px] uppercase tracking-widest flex items-start justify-end pt-3.5 pr-4" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}
                                     > Add Column &rarr; </button>
                                     <button
-                                        onClick={(e) => { e.stopPropagation(); openPanel('add', 'row', null, null, false); }}
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            if (isDeletingSidebar || isClearingSidebar) return;
+                                            openPanel('add', 'row', null, null, false); 
+                                        }}
                                         className="absolute inset-0 w-full h-full text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors cursor-pointer outline-none font-black text-[12px] uppercase tracking-widest flex items-end justify-start pb-3.5 pl-4 bg-gray-50/50" style={{ clipPath: 'polygon(0 0, 100% 100%, 0 100%)' }}
                                     > Add Row &darr; </button>
                                     <div className="absolute inset-0 pointer-events-none">
@@ -530,13 +529,22 @@ const KanbanBoard = () => {
                                  
                                 {backlogColumn && (
                                     <div 
-                                        onClick={(e) => { e.stopPropagation(); if (panel.isOpen) openPanel('view', 'column', backlogColumn, null, false); }}
-                                        onDoubleClick={(e) => { e.stopPropagation(); openPanel('view', 'column', backlogColumn, null, true); }}
-                                        className="group w-[360px] h-full flex-shrink-0 border-r-2 border-dashed flex flex-col items-center justify-center transition-colors select-none cursor-pointer hover:bg-gray-50 relative"
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            if (isDeletingSidebar || isClearingSidebar) return;
+                                            if (panel.isOpen) openPanel('view', 'column', backlogColumn, null, false); 
+                                        }}
+                                        onDoubleClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            if (isDeletingSidebar || isClearingSidebar) return;
+                                            openPanel('view', 'column', backlogColumn, null, true); 
+                                        }}
+                                        className="group w-[360px] h-full flex-shrink-0 border-r-2 border-dashed flex flex-col items-center justify-center transition-colors select-none cursor-pointer relative"
                                         style={{ borderColor: '#d1d5db', backgroundColor: 'transparent' }}
                                     >
-                                        <h3 className="font-black text-sm tracking-widest uppercase text-center w-full truncate text-gray-400 px-4">{backlogColumn.title}</h3>
-                                        <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                                        <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
+                                        <h3 className="font-black text-sm tracking-widest uppercase text-center w-full truncate text-gray-400 px-4 relative z-10">{backlogColumn.title}</h3>
+                                        <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                                             <span className="text-[10px] italic text-gray-400 bg-white/70 px-2 py-0.5 rounded-full">Double click to view</span>
                                         </div>
                                     </div>
@@ -554,13 +562,22 @@ const KanbanBoard = () => {
                                                         {(provided, snapshot) => (
                                                             <div 
                                                                 ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                                                                onClick={(e) => { e.stopPropagation(); if (panel.isOpen) openPanel('view', 'column', col, null, false); }}
-                                                                onDoubleClick={(e) => { e.stopPropagation(); openPanel('view', 'column', col, null, true); }}
-                                                                className={`group w-[360px] h-full flex-shrink-0 border-r-2 flex flex-col items-center justify-center select-none cursor-grab active:cursor-grabbing hover:brightness-95 transition-shadow transition-colors relative
-                                                                    ${snapshot.isDragging ? 'z-50 shadow-2xl ring-2 ring-purple-500 border-none rounded-xl' : ''} ${isOverLimit ? 'ring-inset ring-2 ring-red-500 z-10' : ''}`}
+                                                                onClick={(e) => { 
+                                                                    e.stopPropagation(); 
+                                                                    if (isDeletingSidebar || isClearingSidebar) return;
+                                                                    if (panel.isOpen) openPanel('view', 'column', col, null, false); 
+                                                                }}
+                                                                onDoubleClick={(e) => { 
+                                                                    e.stopPropagation(); 
+                                                                    if (isDeletingSidebar || isClearingSidebar) return;
+                                                                    openPanel('view', 'column', col, null, true); 
+                                                                }}
+                                                                className={`group w-[360px] h-full flex-shrink-0 border-r-2 flex flex-col items-center justify-center select-none cursor-grab active:cursor-grabbing transition-shadow transition-colors relative
+                                                                    ${snapshot.isDragging ? 'z-50 shadow-2xl ring-2 ring-purple-500 border-none rounded-xl' : ''} ${isOverLimit ? 'ring-inset ring-2 ring-red-500' : ''}`}
                                                                 style={{ backgroundColor: isOverLimit ? '#fef2f2' : (liveColColor || '#ffffff'), borderColor: isOverLimit ? '#ef4444' : (liveColColor && liveColColor !== '#ffffff' ? liveColColor : '#e5e7eb'), ...provided.draggableProps.style }}
                                                             >
-                                                                <div className="flex flex-col items-center justify-center w-full px-4 mt-2">
+                                                                <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
+                                                                <div className="flex flex-col items-center justify-center w-full px-4 mt-2 relative z-10">
                                                                     <h3 className={`font-black text-sm tracking-widest uppercase text-center w-full truncate ${isOverLimit ? 'text-red-600' : 'text-gray-900'}`}>{col.title}</h3>
                                                                     {col.limit > 0 && (
                                                                         <span className={`text-xs font-bold mt-2 px-3 py-1 rounded-full border ${isOverLimit ? 'bg-red-100 text-red-700 border-red-200' : 'bg-gray-100/80 text-gray-500 border-gray-200'}`}>
@@ -568,7 +585,7 @@ const KanbanBoard = () => {
                                                                         </span>
                                                                     )}
                                                                 </div>
-                                                                <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                                                                <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                                                                     <span className="text-[10px] italic text-gray-500 bg-white/70 px-2 py-0.5 rounded-full">Drag to reorder / Double click</span>
                                                                 </div>
                                                             </div>
@@ -596,13 +613,22 @@ const KanbanBoard = () => {
                                                         >
                                                             <div 
                                                                 {...provided.dragHandleProps}
-                                                                onClick={(e) => { e.stopPropagation(); if (panel.isOpen) openPanel('view', 'row', row, null, false); }}
-                                                                onDoubleClick={(e) => { e.stopPropagation(); openPanel('view', 'row', row, null, true); }}
-                                                                className="group w-56 flex-shrink-0 border-r-2 border-gray-200 p-6 flex flex-col items-center justify-center text-center cursor-grab active:cursor-grabbing hover:brightness-95 transition-colors select-none relative"
+                                                                onClick={(e) => { 
+                                                                    e.stopPropagation(); 
+                                                                    if (isDeletingSidebar || isClearingSidebar) return;
+                                                                    if (panel.isOpen) openPanel('view', 'row', row, null, false); 
+                                                                }}
+                                                                onDoubleClick={(e) => { 
+                                                                    e.stopPropagation(); 
+                                                                    if (isDeletingSidebar || isClearingSidebar) return;
+                                                                    openPanel('view', 'row', row, null, true); 
+                                                                }}
+                                                                className="group w-56 flex-shrink-0 border-r-2 border-gray-200 p-6 flex flex-col items-center justify-center text-center cursor-grab active:cursor-grabbing transition-colors select-none relative"
                                                                 style={{ backgroundColor: liveRowColor }}
                                                             >
-                                                                <span className="font-black text-sm uppercase tracking-widest text-gray-900 drop-shadow-sm mb-2">{row.title}</span>
-                                                                <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                                                                <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
+                                                                <span className="font-black text-sm uppercase tracking-widest text-gray-900 drop-shadow-sm mb-2 relative z-10">{row.title}</span>
+                                                                <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                                                                     <span className="text-[10px] italic text-gray-500 bg-white/70 px-2 py-0.5 rounded-full">Drag to reorder / Double click</span>
                                                                 </div>
                                                             </div>
@@ -622,12 +648,15 @@ const KanbanBoard = () => {
                             </Droppable>
 
                             <div className="flex relative border-b-2 border-gray-200 bg-white">
-                                <div className="w-56 flex-shrink-0 border-r-2 border-gray-200 p-6 flex flex-col items-center justify-center text-center bg-gray-50/50">
+                                <div 
+                                    className="w-56 flex-shrink-0 border-r-2 border-gray-200 p-6 flex flex-col items-center justify-center text-center bg-gray-50/50"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
                                     <span className="font-black text-sm uppercase tracking-widest text-gray-400">Unlabeled</span>
                                 </div>
                                 {backlogColumn && renderCell(backlogColumn, null, true, '#ffffff')}
                                 {draggableColumns.map(col => renderCell(col, null, false, '#ffffff'))}
-                                <div className="flex-1 bg-white border-b-2 border-transparent"></div>
+                                <div className="flex-1 bg-white border-b-2 border-transparent" onClick={(e) => e.stopPropagation()}></div>
                             </div>
                         </div>
                     </div>
@@ -650,16 +679,17 @@ const KanbanBoard = () => {
                         ))}
                     </div>
                 </DragDropContext>
+                
+                {(isDeletingSidebar || isClearingSidebar) && (
+                    <div 
+                        className="absolute inset-0 z-30 bg-black/40 backdrop-blur-sm transition-all duration-300 pointer-events-auto"
+                        onClick={() => {
+                            setIsDeletingSidebar(false);
+                            setIsClearingSidebar(false);
+                        }}
+                    />
+                )}
             </div>
-
-            {deletePrompt && (
-                <DeletePromptModal 
-                    prompt={deletePrompt} 
-                    onClose={() => setDeletePrompt(null)} 
-                    targetMoveId={targetMoveId} 
-                    setTargetMoveId={setTargetMoveId} 
-                />
-            )}
         </div>
     );
 };
