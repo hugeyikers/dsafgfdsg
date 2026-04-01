@@ -1,4 +1,4 @@
-export declare class UpdateColumnDto {
+export declare class UpdateRowDto {
     title?: string;
     limit?: number;
     order?: number;

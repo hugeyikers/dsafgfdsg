@@ -9,6 +9,7 @@ export declare class UsersService {
         fullName: string;
         role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
+        limit: number | null;
     }[]>;
     create(data: any): Promise<{
         password: string;
@@ -17,6 +18,7 @@ export declare class UsersService {
         fullName: string;
         role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
+        limit: number | null;
     }>;
     update(id: number, data: any): Promise<{
         password: string;
@@ -25,6 +27,7 @@ export declare class UsersService {
         fullName: string;
         role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
+        limit: number | null;
     }>;
     remove(id: number): Promise<{
         password: string;
@@ -33,5 +36,6 @@ export declare class UsersService {
         fullName: string;
         role: import(".prisma/client").$Enums.Role;
         createdAt: Date;
+        limit: number | null;
     }>;
 }

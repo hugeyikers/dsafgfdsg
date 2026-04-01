@@ -29,7 +29,7 @@ let KanbanService = class KanbanService {
         }
     }
     async findAll() {
-        return this.prisma.kanbanColumn.findMany({
+        const columns = await this.prisma.kanbanColumn.findMany({
             include: {
                 items: {
                     orderBy: { order: 'asc' },
@@ -38,6 +38,10 @@ let KanbanService = class KanbanService {
             },
             orderBy: { order: 'asc' },
         });
+        const rows = await this.prisma.kanbanRow.findMany({
+            orderBy: { order: 'asc' },
+        });
+        return { columns, rows };
     }
     async createColumn(dto) {
         const maxOrder = await this.prisma.kanbanColumn.findFirst({ orderBy: { order: 'desc' } });
@@ -57,6 +61,24 @@ let KanbanService = class KanbanService {
     async removeColumn(id) {
         return this.prisma.kanbanColumn.delete({ where: { id } });
     }
+    async createRow(dto) {
+        const maxOrder = await this.prisma.kanbanRow.findFirst({ orderBy: { order: 'desc' } });
+        const order = maxOrder ? maxOrder.order + 1 : 0;
+        return this.prisma.kanbanRow.create({
+            data: Object.assign(Object.assign({}, dto), { order }),
+            include: { items: true },
+        });
+    }
+    async updateRow(id, dto) {
+        return this.prisma.kanbanRow.update({
+            where: { id },
+            data: dto,
+            include: { items: true },
+        });
+    }
+    async removeRow(id) {
+        return this.prisma.kanbanRow.delete({ where: { id } });
+    }
     async createItem(dto) {
         const maxOrder = await this.prisma.kanbanItem.findFirst({
             where: { columnId: dto.columnId },
@@ -65,10 +87,13 @@ let KanbanService = class KanbanService {
         const order = maxOrder ? maxOrder.order + 1 : 0;
         return this.prisma.kanbanItem.create({
             data: {
+                title: dto.content,
                 content: dto.content,
                 columnId: dto.columnId,
+                rowId: dto.rowId || null,
                 assignedToId: dto.assignedToId || null,
-                order
+                order,
+                color: dto.color || null
             },
             include: { assignedTo: true },
         });
@@ -101,6 +126,13 @@ let KanbanService = class KanbanService {
     }
     async reorderColumns(columnIds) {
         const updates = columnIds.map((id, index) => this.prisma.kanbanColumn.update({
+            where: { id },
+            data: { order: index },
+        }));
+        return await this.prisma.$transaction(updates);
+    }
+    async reorderRows(rowIds) {
+        const updates = rowIds.map((id, index) => this.prisma.kanbanRow.update({
             where: { id },
             data: { order: index },
         }));

@@ -65,17 +65,33 @@ async function main() {
       fullName: 'Jan Programista',
       role: Role.USER,
       password: userPass,
-      email: 'dev@canban.pl'
+      email: 'dev@canban.pl',
+      limit: 5
     },
     create: {
       email: 'dev@canban.pl',
       fullName: 'Jan Programista',
       role: Role.USER,
       password: userPass,
+      limit: 5
     },
   });
 
   console.log('Users seeded:', { admin_email: admin.email, user_email: user.email, dev_email: dev.email });
+
+  // Create Kanban Rows if not exist
+  let standardRow = await prisma.kanbanRow.findFirst({ where: { title: 'Standardowe' } });
+  let urgentRow = await prisma.kanbanRow.findFirst({ where: { title: 'Pilne' } });
+
+  const rowsCount = await prisma.kanbanRow.count();
+  if (rowsCount === 0) {
+    console.log('Seeding Kanban Rows...');
+    standardRow = await prisma.kanbanRow.create({ data: { title: 'Standardowe', order: 0 } });
+    urgentRow = await prisma.kanbanRow.create({ data: { title: 'Pilne', order: 1, limit: 3 } });
+    console.log('Kanban rows seeded.');
+  } else {
+    console.log('Kanban rows already exist. Skipping.');
+  }
 
   // Create Kanban Columns if not exist
   const columnsCount = await prisma.kanbanColumn.count();
@@ -91,19 +107,25 @@ async function main() {
         items: {
           create: [
              { 
-                 content: 'Skonfigurować projekt', 
+                 title: 'Skonfigurować projekt',
+                 content: 'Zainstalować zależności i przygotować .env',
                  order: 0,
-                 assignedToId: admin.id 
+                 assignedToId: admin.id,
+                 rowId: standardRow?.id
              },
              { 
-                 content: 'Sprawdzić logowanie i rejestrację', 
+                 title: 'Sprawdzić logowanie i rejestrację',
+                 content: 'Przetestować endpointy auth/login i auth/register', 
                  order: 1,
-                 assignedToId: user.id
+                 assignedToId: user.id,
+                 rowId: standardRow?.id
              },
              {
-                 content: 'Obsługa błędów',
+                 title: 'Obsługa błędów',
+                 content: 'Dodać globalny filtr wyjątków',
                  order: 2,
-                 assignedToId: dev.id
+                 assignedToId: dev.id,
+                 rowId: urgentRow?.id
              }
           ]
         }
@@ -118,14 +140,18 @@ async function main() {
         items: {
           create: [
              { 
-                 content: 'Implementacja frontendu (Swimlanes)', 
+                 title: 'Implementacja frontendu (Swimlanes)', 
+                 content: 'Dodać widok wierszy w React',
                  order: 0,
-                 assignedToId: dev.id
+                 assignedToId: dev.id,
+                 rowId: urgentRow?.id
              },
              {
-                 content: 'Testy jednostkowe backendu',
+                 title: 'Testy jednostkowe backendu',
+                 content: 'Napisać testy dla serwisu Kanban',
                  order: 1,
-                 assignedToId: admin.id
+                 assignedToId: admin.id,
+                 rowId: standardRow?.id
              }
           ]
         }
@@ -140,9 +166,11 @@ async function main() {
           items: {
               create: [
                  {
-                     content: 'Weryfikacja zmian w migracji',
+                     title: 'Weryfikacja zmian w migracji',
+                     content: 'Sprawdzić poprawność SQL',
                      order: 0,
-                     assignedToId: admin.id
+                     assignedToId: admin.id,
+                     rowId: urgentRow?.id
                  }
               ]
           }
@@ -157,14 +185,18 @@ async function main() {
         items: {
           create: [
              { 
-                 content: 'Inicjalizacja repozytorium', 
+                 title: 'Inicjalizacja repozytorium', 
+                 content: 'Git init i pierwszy commit',
                  order: 0,
-                 assignedToId: admin.id
+                 assignedToId: admin.id,
+                 rowId: standardRow?.id
              },
              {
-                 content: 'Konfiguracja Docker',
+                 title: 'Konfiguracja Docker',
+                 content: 'Dockerfile i docker-compose.yml',
                  order: 1,
-                 assignedToId: null // Unassigned
+                 assignedToId: null, // Unassigned
+                 rowId: standardRow?.id
              }
           ]
         }

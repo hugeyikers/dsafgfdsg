@@ -9,47 +9,30 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateItemDto = void 0;
+exports.UpdateRowDto = void 0;
 const class_validator_1 = require("class-validator");
-class UpdateItemDto {
+class UpdateRowDto {
 }
-exports.UpdateItemDto = UpdateItemDto;
+exports.UpdateRowDto = UpdateRowDto;
 __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
-], UpdateItemDto.prototype, "content", void 0);
+], UpdateRowDto.prototype, "title", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], UpdateItemDto.prototype, "title", void 0);
+    __metadata("design:type", Number)
+], UpdateRowDto.prototype, "limit", void 0);
 __decorate([
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Number)
-], UpdateItemDto.prototype, "columnId", void 0);
-__decorate([
-    (0, class_validator_1.IsInt)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Number)
-], UpdateItemDto.prototype, "rowId", void 0);
-__decorate([
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.IsInt)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Number)
-], UpdateItemDto.prototype, "order", void 0);
-__decorate([
-    (0, class_validator_1.ValidateIf)((object, value) => value !== null),
-    (0, class_validator_1.IsInt)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Number)
-], UpdateItemDto.prototype, "assignedToId", void 0);
+], UpdateRowDto.prototype, "order", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
-], UpdateItemDto.prototype, "color", void 0);
-//# sourceMappingURL=update-item.dto.js.map
+], UpdateRowDto.prototype, "color", void 0);
+//# sourceMappingURL=update-row.dto.js.map

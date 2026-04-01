@@ -18,6 +18,11 @@ __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
+], CreateItemDto.prototype, "title", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
 ], CreateItemDto.prototype, "content", void 0);
 __decorate([
     (0, class_validator_1.IsNumber)(),
@@ -25,10 +30,21 @@ __decorate([
     __metadata("design:type", Number)
 ], CreateItemDto.prototype, "columnId", void 0);
 __decorate([
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], CreateItemDto.prototype, "rowId", void 0);
+__decorate([
     (0, class_validator_1.ValidateIf)((object, value) => value !== null),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsInt)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Number)
 ], CreateItemDto.prototype, "assignedToId", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateItemDto.prototype, "color", void 0);
 //# sourceMappingURL=create-item.dto.js.map

@@ -1,6 +1,6 @@
 import { IsInt, IsNumber, IsOptional, IsString } from 'class-validator';
 
-export class UpdateColumnDto {
+export class UpdateRowDto {
     @IsString()
     @IsOptional()
     title?: string;
