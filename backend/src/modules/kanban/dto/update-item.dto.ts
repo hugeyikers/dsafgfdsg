@@ -9,14 +9,17 @@ export class UpdateItemDto {
     @IsOptional()
     title?: string;
 
+    @ValidateIf((object, value) => value !== null)
     @IsNumber()
     @IsInt()
     @IsOptional()
-    columnId?: number;
+    columnId?: number | null;
 
+    // TUTAJ BYŁ BŁĄD! Brakowało ValidateIf dla null.
+    @ValidateIf((object, value) => value !== null)
     @IsInt()
     @IsOptional()
-    rowId?: number;
+    rowId?: number | null;
 
     @IsNumber()
     @IsInt()
@@ -31,5 +34,4 @@ export class UpdateItemDto {
     @IsString()
     @IsOptional()
     color?: string;
-  }
-  
+}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
-import { useNavigate } from 'react-router-dom'; // Wymaga react-router-dom
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -9,29 +9,25 @@ const Login = () => {
   
   const { login, isLoading, error, isLogged, clearError } = useAuthStore();
 
-  // Jeśli użytkownik jest już zalogowany, przekieruj go
   useEffect(() => {
     if (isLogged) {
       navigate('/kanban', { replace: true });
     }
-    // Czyścimy błędy przy wejściu na stronę
     return () => clearError();
   }, [isLogged, navigate, clearError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Prosta walidacja frontendowa (UX)
     if (password.length < 6) {
-        alert("Hasło musi mieć minimum 6 znaków"); // Tu można użyć ładniejszego UI zamiast alert
+        alert("Password must be at least 6 characters long"); 
         return;
     }
 
     try {
       await login(email, password);
-      // Przekierowanie obsłuży useEffect powyżej
     } catch (err) {
-      // Błąd jest już w store (state.error), więc UI się zaktualizuje
+      // Error is handled by the store
     }
   };
 
@@ -51,12 +47,12 @@ const Login = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group" style={styles.formGroup}>
-            <label style={styles.label}>Identyfikator / Email AD</label>
+            <label style={styles.label}>Identifier / AD Email</label>
             <input 
               type="email" 
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
-              placeholder="np. canban@host.pl" 
+              placeholder="e.g. canban@host.com" 
               required 
               className="form-control"
               style={styles.input}
@@ -65,7 +61,7 @@ const Login = () => {
           </div>
           
           <div className="form-group" style={styles.formGroup}>
-            <label style={styles.label}>Hasło systemowe</label>
+            <label style={styles.label}>System Password</label>
             <input 
               type="password" 
               value={password} 
@@ -84,19 +80,18 @@ const Login = () => {
             style={{...styles.button, opacity: isLoading ? 0.7 : 1, cursor: isLoading ? 'not-allowed' : 'pointer'}}
             disabled={isLoading}
           >
-            {isLoading ? 'Autoryzacja...' : 'AUTORYZUJ DOSTĘP'}
+            {isLoading ? 'Authorizing...' : 'AUTHORIZE ACCESS'}
           </button>
         </form>
 
         <div className="system-footer-login" style={styles.footer}>
-          Połączenie szyfrowane SSL (AES-256)<br />
+          SSL Encrypted Connection (AES-256)<br />
         </div>
       </div>
     </div>
   );
 };
 
-// Style wyciągnięte do obiektu dla czystości kodu JSX
 const styles = {
   container: {
     display: 'flex',

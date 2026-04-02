@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useUserStore, User } from '../store/useUserStore';
-import { Trash2, UserCog, UserPlus, X, Save, Key, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { useKanbanStore } from '../store/useKanbanStore';
+import { Trash2, UserPlus, X, Key, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 
 const UserManagement = () => {
-  const { users, fetchUsers, createUser, updateUserRole, updateUserPassword, deleteUser, isLoading, error } = useUserStore();
+  const { users, fetchUsers, createUser, updateUserRole, updateUserPassword, deleteUser, isLoading, error, maxTasksPerUser, setMaxTasksPerUser } = useUserStore();
+  const { columns, fetchBoard } = useKanbanStore();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [selectedUserForPassword, setSelectedUserForPassword] = useState<User | null>(null);
@@ -11,11 +14,11 @@ const UserManagement = () => {
   const [showPassword, setShowPassword] = useState(false);
   
   const [newUser, setNewUser] = useState({ fullName: '', email: '', password: '', role: 'USER' as const });
-  const [editingUserId, setEditingUserId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+    fetchBoard();
+  }, [fetchUsers, fetchBoard]);
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +33,7 @@ const UserManagement = () => {
   };
 
   const handleDeleteUser = async (id: number) => {
-    if (window.confirm('Czy na pewno chcesz usunąć tego użytkownika?')) {
+    if (window.confirm('Are you sure you want to completely remove this user from the system?')) {
       await deleteUser(id);
     }
   };
@@ -52,8 +55,7 @@ const UserManagement = () => {
     e.preventDefault();
     if (!selectedUserForPassword || !newPassword) return;
     
-    // Dodatkowe, proste potwierdzenie w oknie dialogowym przeglądarki
-    if (!window.confirm(`Czy na pewno zmienić hasło dla użytkownika ${selectedUserForPassword.fullName}? Ta operacja jest nieodwracalna.`)) {
+    if (!window.confirm(`Are you sure you want to change the password for user ${selectedUserForPassword.fullName}? This action is irreversible.`)) {
       return;
     }
 
@@ -61,10 +63,10 @@ const UserManagement = () => {
       await updateUserPassword(selectedUserForPassword.id, newPassword);
       setIsPasswordModalOpen(false);
       setNewPassword('');
-      alert('Hasło zostało zmienione pomyślnie.');
+      alert('Password changed successfully.');
     } catch (err) {
       console.error(err);
-      alert('Wystąpił błąd podczas zmiany hasła.');
+      alert('An error occurred while changing the password.');
     }
   };
 
@@ -72,15 +74,15 @@ const UserManagement = () => {
     <div className="flex h-full flex-col bg-gray-50 p-8 overflow-y-auto">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Zarządzanie Użytkownikami</h1>
-          <p className="text-gray-500 mt-1">Dodawaj, usuwaj i edytuj uprawnienia użytkowników.</p>
+          <h1 className="text-3xl font-bold text-gray-800">Settings</h1>
+          <p className="text-gray-500 mt-1">Manage global users and board access.</p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 rounded-xl bg-purple-600 px-5 py-3 font-semibold text-white shadow-lg transition-all hover:bg-purple-700 hover:shadow-purple-200"
         >
           <UserPlus size={20} />
-          Nowy Użytkownik
+          Add User
         </button>
       </div>
 
@@ -90,28 +92,55 @@ const UserManagement = () => {
         </div>
       )}
 
+      {/* --- SEKCJA KANBAN SETTINGS --- */}
+      <div className="mb-8 rounded-2xl bg-white p-6 shadow-sm border border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+              <h2 className="text-lg font-bold text-gray-800">Kanban Board Settings</h2>
+              <p className="text-sm text-gray-500 mt-1">Set a global task limit for all users on the board.</p>
+          </div>
+          <div className="flex items-center gap-4 p-3 bg-gray-50 border border-gray-200 rounded-xl">
+              <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Max Tasks Per User</span>
+              <input 
+                  type="number" min="1" max="99"
+                  value={maxTasksPerUser}
+                  onChange={(e) => setMaxTasksPerUser(parseInt(e.target.value) || 1)}
+                  className="w-16 text-center text-sm font-bold py-1.5 border border-gray-300 rounded outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all bg-white"
+              />
+          </div>
+      </div>
+
       <div className="rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden">
         <table className="w-full text-left text-sm text-gray-600">
           <thead className="bg-gray-100 text-xs uppercase text-gray-500 font-bold border-b border-gray-200">
             <tr>
-              <th className="px-6 py-4">ID</th>
-              <th className="px-6 py-4">Imię i Nazwisko</th>
+              <th className="px-6 py-4">Full Name</th>
               <th className="px-6 py-4">Email</th>
-              <th className="px-6 py-4">Rola</th>
-              <th className="px-6 py-4 text-right">Akcje</th>
+              <th className="px-6 py-4">Tasks</th>
+              <th className="px-6 py-4">Role</th>
+              <th className="px-6 py-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {users.map((user) => (
+            {users.map((user) => {
+              const taskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === user.id).length;
+              const isOverLimit = taskCount >= maxTasksPerUser;
+
+              return (
               <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 font-mono text-gray-400">#{user.id}</td>
                 <td className="px-6 py-4 font-bold text-gray-800">{user.fullName}</td>
                 <td className="px-6 py-4 text-gray-600">{user.email}</td>
+                <td className="px-6 py-4">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold border 
+                        ${isOverLimit ? 'bg-red-100 text-red-700 border-red-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}
+                    >
+                        {taskCount} / {maxTasksPerUser}
+                    </span>
+                </td>
                 <td className="px-6 py-4">
                   <select
                     value={user.role}
                     onChange={(e) => handleRoleChange(user, e.target.value as 'ADMINISTRATOR' | 'USER')}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wider
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wider cursor-pointer focus:outline-none
                       ${user.role === 'ADMINISTRATOR' 
                         ? 'border-purple-200 bg-purple-50 text-purple-700' 
                         : 'border-blue-200 bg-blue-50 text-blue-700'}
@@ -126,25 +155,25 @@ const UserManagement = () => {
                     <button
                       onClick={() => openPasswordModal(user)}
                       className="rounded-lg p-2 text-gray-400 hover:bg-yellow-50 hover:text-yellow-600 transition-colors"
-                      title="Zmień hasło"
+                      title="Change password"
                     >
                       <Key size={18} />
                     </button>
                     <button
                       onClick={() => handleDeleteUser(user.id)}
                       className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                      title="Usuń użytkownika"
+                      title="Delete user"
                     >
                       <Trash2 size={18} />
                     </button>
                   </div>
                 </td>
               </tr>
-            ))}
+            )})}
             {users.length === 0 && !isLoading && (
               <tr>
                 <td colSpan={5} className="px-6 py-8 text-center text-gray-400 italic">
-                  Brak użytkowników do wyświetlenia.
+                  No users to display.
                 </td>
               </tr>
             )}
@@ -152,14 +181,14 @@ const UserManagement = () => {
         </table>
       </div>
 
-      {/* Modal - Zmiana hasła */}
+      {/* Password Change Modal */}
       {isPasswordModalOpen && selectedUserForPassword && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in duration-200 border-t-4 border-yellow-500">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                 <Key className="text-yellow-500" size={24} />
-                Zmiana hasła
+                Change Password
               </h2>
               <button 
                 onClick={() => setIsPasswordModalOpen(false)}
@@ -170,16 +199,16 @@ const UserManagement = () => {
             </div>
 
             <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-100 flex gap-3 text-yellow-800 text-sm">
-                <AlertTriangle className="flex-shrink-0" size={20} />
+                <AlertTriangle className="flex-shrink-0 mt-0.5" size={20} />
                 <div>
-                    <span className="font-bold block mb-1">Uwaga!</span>
-                    Zmieniasz hasło dla użytkownika <span className="font-bold">{selectedUserForPassword.fullName}</span> ({selectedUserForPassword.email}). Użytkownik zostanie wylogowany ze wszystkich sesji.
+                    <span className="font-bold block mb-1">Warning!</span>
+                    You are changing the password for user <span className="font-bold">{selectedUserForPassword.fullName}</span> ({selectedUserForPassword.email}). The user will be logged out of all sessions.
                 </div>
             </div>
             
             <form onSubmit={handlePasswordChange} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nowe Hasło</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -188,7 +217,7 @@ const UserManagement = () => {
                     className="w-full rounded-lg border border-gray-300 px-4 py-2 pr-10 focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Wpisz nowe hasło..."
+                    placeholder="Enter new password..."
                   />
                   <button
                     type="button"
@@ -198,23 +227,23 @@ const UserManagement = () => {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">Minimum 6 znaków.</p>
+                <p className="mt-1 text-xs text-gray-500">Minimum 6 characters.</p>
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsPasswordModalOpen(false)}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
                 >
-                  Anuluj
+                  Cancel
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-600 shadow-md shadow-yellow-200"
+                  className="rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-600 shadow-md shadow-yellow-200 transition-colors"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Zmienianie...' : 'Zmień Hasło'}
+                  {isLoading ? 'Changing...' : 'Change Password'}
                 </button>
               </div>
             </form>
@@ -222,12 +251,15 @@ const UserManagement = () => {
         </div>
       )}
 
-      {/* Modal - Dodawanie użytkownika */}
+      {/* Add User Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in duration-200 border-t-4 border-purple-500">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-800">Dodaj Użytkownika</h2>
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <UserPlus className="text-purple-500" size={24} />
+                Add User Manually
+              </h2>
               <button 
                 onClick={() => setIsModalOpen(false)}
                 className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
@@ -238,14 +270,14 @@ const UserManagement = () => {
             
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Pełna Nazwa</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                 <input
                   type="text"
                   required
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 transition-all"
                   value={newUser.fullName}
                   onChange={(e) => setNewUser({...newUser, fullName: e.target.value})}
-                  placeholder="Jan Kowalski"
+                  placeholder="John Doe"
                 />
               </div>
 
@@ -254,19 +286,20 @@ const UserManagement = () => {
                 <input
                   type="email"
                   required
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 transition-all"
                   value={newUser.email}
                   onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                  placeholder="jan@example.com"
+                  placeholder="john@example.com"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Hasło</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                 <input
                   type="password"
                   required
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  minLength={6}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 transition-all"
                   value={newUser.password}
                   onChange={(e) => setNewUser({...newUser, password: e.target.value})}
                   placeholder="••••••••"
@@ -274,13 +307,13 @@ const UserManagement = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rola</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                 <select
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 bg-white transition-all cursor-pointer"
                   value={newUser.role}
                   onChange={(e) => setNewUser({...newUser, role: e.target.value as 'ADMINISTRATOR' | 'USER'})}
                 >
-                  <option value="USER">Użytkownik</option>
+                  <option value="USER">User</option>
                   <option value="ADMINISTRATOR">Administrator</option>
                 </select>
               </div>
@@ -289,16 +322,16 @@ const UserManagement = () => {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
                 >
-                  Anuluj
+                  Cancel
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+                  className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 shadow-md shadow-purple-200 transition-colors"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Dodawanie...' : 'Dodaj Użytkownika'}
+                  {isLoading ? 'Adding...' : 'Add User'}
                 </button>
               </div>
             </form>

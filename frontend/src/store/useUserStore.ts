@@ -13,18 +13,23 @@ interface UserState {
   users: User[];
   isLoading: boolean;
   error: string | null;
+  maxTasksPerUser: number; // Globalny limit
   
   fetchUsers: () => Promise<void>;
   createUser: (userData: Omit<User, 'id' | 'createdAt'> & { password?: string }) => Promise<void>;
   updateUserRole: (id: number, role: 'ADMINISTRATOR' | 'USER') => Promise<void>;
   updateUserPassword: (id: number, password: string) => Promise<void>;
   deleteUser: (id: number) => Promise<void>;
+  setMaxTasksPerUser: (limit: number) => void;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
   users: [],
   isLoading: false,
   error: null,
+  maxTasksPerUser: 5,
+
+  setMaxTasksPerUser: (limit: number) => set({ maxTasksPerUser: limit }),
 
   fetchUsers: async () => {
     set({ isLoading: true, error: null });
@@ -32,7 +37,7 @@ export const useUserStore = create<UserState>((set, get) => ({
       const response = await client.get('/users');
       set({ users: response.data, isLoading: false });
     } catch (error: any) {
-      set({ error: error.message || 'Błąd pobierania użytkowników', isLoading: false });
+      set({ error: error.message || 'Error fetching users', isLoading: false });
     }
   },
 
@@ -40,9 +45,9 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await client.post('/users', userData);
-      await get().fetchUsers(); // Odśwież listę
+      await get().fetchUsers(); 
     } catch (error: any) {
-      set({ error: error.message || 'Błąd tworzenia użytkownika', isLoading: false });
+      set({ error: error.message || 'Error creating user', isLoading: false });
       throw error;
     }
   },
@@ -51,9 +56,9 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await client.put(`/users/${id}`, { role });
-      await get().fetchUsers(); // Odśwież listę
+      await get().fetchUsers(); 
     } catch (error: any) {
-      set({ error: error.message || 'Błąd aktualizacji roli', isLoading: false });
+      set({ error: error.message || 'Error updating role', isLoading: false });
       throw error;
     }
   },
@@ -62,10 +67,9 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await client.put(`/users/${id}`, { password });
-      // Nie musimy odświeżać listy użytkowników po zmianie hasła
       set({ isLoading: false });
     } catch (error: any) {
-      set({ error: error.message || 'Błąd aktualizacji hasła', isLoading: false });
+      set({ error: error.message || 'Error updating password', isLoading: false });
       throw error;
     }
   },
@@ -74,9 +78,9 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await client.delete(`/users/${id}`);
-      await get().fetchUsers(); // Odśwież listę
+      await get().fetchUsers(); 
     } catch (error: any) {
-      set({ error: error.message || 'Błąd usuwania użytkownika', isLoading: false });
+      set({ error: error.message || 'Error deleting user', isLoading: false });
       throw error;
     }
   },
