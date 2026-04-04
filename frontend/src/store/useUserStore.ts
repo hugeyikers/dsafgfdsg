@@ -45,7 +45,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await client.post('/users', userData);
-      await get().fetchUsers(); 
+      await get().fetchUsers(); // Odśwież listę
     } catch (error: any) {
       set({ error: error.message || 'Error creating user', isLoading: false });
       throw error;
@@ -56,7 +56,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await client.put(`/users/${id}`, { role });
-      await get().fetchUsers(); 
+      await get().fetchUsers(); // Odśwież listę
     } catch (error: any) {
       set({ error: error.message || 'Error updating role', isLoading: false });
       throw error;
@@ -67,6 +67,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await client.put(`/users/${id}`, { password });
+      // Nie musimy odświeżać listy użytkowników po zmianie hasła
       set({ isLoading: false });
     } catch (error: any) {
       set({ error: error.message || 'Error updating password', isLoading: false });
@@ -78,7 +79,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await client.delete(`/users/${id}`);
-      await get().fetchUsers(); 
+      await get().fetchUsers(); // Odśwież listę
     } catch (error: any) {
       set({ error: error.message || 'Error deleting user', isLoading: false });
       throw error;
