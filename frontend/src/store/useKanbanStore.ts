@@ -7,15 +7,7 @@ export interface KanbanItem {
   order: number;
   columnId: number;
   rowId: number | null;
-<<<<<<< HEAD
   assignedToId: number | null;
-=======
-  assignedToId?: number | null;
-  color?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  title?: string;
->>>>>>> 3fbcbef (adding working drag and drop)
   assignedTo?: {
       id: number;
       fullName: string;
@@ -39,10 +31,7 @@ export interface KanbanRow {
     id: number;
     title: string;
     order: number;
-<<<<<<< HEAD
     limit: number;
-=======
->>>>>>> 3fbcbef (adding working drag and drop)
     color?: string;
 }
 
@@ -53,7 +42,6 @@ interface KanbanState {
   
   fetchBoard: () => Promise<void>;
   
-<<<<<<< HEAD
   addColumn: (title: string, color?: string, limit?: number) => Promise<void>;
   updateColumn: (id: number, data: { title?: string, color?: string, order?: number, limit?: number }) => Promise<void>;
   removeColumn: (id: number, action?: 'delete_tasks' | 'move_tasks', targetColId?: number) => Promise<void>;
@@ -66,17 +54,6 @@ interface KanbanState {
 
   // FIX: Używamy obiektu, aby nazwy zmiennych się nie pomieszały!
   addItem: (data: { columnId: number, rowId: number | null, title: string, content: string, color?: string, assignedToId?: number | null }) => Promise<void>;
-=======
-  addColumn: (title: string, color?: string) => Promise<void>;
-  updateColumn: (id: number, data: { title?: string, color?: string }) => Promise<void>;
-  removeColumn: (id: number, action?: 'delete_tasks' | 'move_tasks', targetColId?: number) => Promise<void>;
-  
-  addRow: (title: string, color?: string) => Promise<void>;
-  updateRow: (id: number, data: { title?: string, color?: string }) => Promise<void>;
-  removeRow: (id: number, action?: 'delete_tasks' | 'move_tasks', targetRowId?: number) => Promise<void>;
-
-  addItem: (columnId: number, rowId: number | null, title: string, content: string) => Promise<void>;
->>>>>>> 3fbcbef (adding working drag and drop)
   updateItem: (itemId: number, data: Partial<KanbanItem>) => Promise<void>;
   removeItem: (itemId: number) => Promise<void>;
   
@@ -92,7 +69,6 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     set({ isLoading: true });
     try {
       const res = await client.get('/kanban/all');
-<<<<<<< HEAD
       set({ columns: res.data.columns || [], rows: res.data.rows || [] });
     } catch (e) { console.error(e); } finally { set({ isLoading: false }); }
   },
@@ -161,30 +137,6 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
   addItem: async (data) => {
     try { 
         await client.post('/kanban/items', data); 
-=======
-      set({ 
-          columns: res.data.columns || [], 
-          rows: res.data.rows || [] 
-      });
-    } catch (e) {
-      console.error(e);
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-
-  addColumn: async (title, color) => { try { await client.post('/kanban/columns', { title, color }); get().fetchBoard(); } catch (e) { console.error(e); } },
-  updateColumn: async (id, data) => { try { await client.patch(`/kanban/columns/${id}`, data); get().fetchBoard(); } catch (e) { console.error(e); } },
-  removeColumn: async (id, action, targetColId) => { try { await client.delete(`/kanban/columns/${id}`, { data: { action, targetColId } }); get().fetchBoard(); } catch (e) { console.error(e); } },
-
-  addRow: async (title, color) => { try { await client.post('/kanban/rows', { title, color }); get().fetchBoard(); } catch (e) { console.error(e); } },
-  updateRow: async (id, data) => { try { await client.patch(`/kanban/rows/${id}`, data); get().fetchBoard(); } catch (e) { console.error(e); } },
-  removeRow: async (id, action, targetRowId) => { try { await client.delete(`/kanban/rows/${id}`, { data: { action, targetRowId } }); get().fetchBoard(); } catch (e) { console.error(e); } },
-
-  addItem: async (columnId, rowId, title, content) => {
-    try { 
-        await client.post('/kanban/items', { columnId, rowId, title, content }); 
->>>>>>> 3fbcbef (adding working drag and drop)
         get().fetchBoard(); 
     } catch (e) { console.error(e); }
   },
@@ -198,7 +150,6 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
   },
 
   moveItem: async (itemId, targetColumnId, targetRowId) => {
-<<<<<<< HEAD
       set(state => {
           let movedItem: any = null;
           const newColumns = state.columns.map(col => {
@@ -219,46 +170,5 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
           await client.patch(`/kanban/items/${itemId}`, { columnId: targetColumnId, rowId: targetRowId });
           get().fetchBoard(); 
       } catch (e) { console.error("Move error:", e); get().fetchBoard(); }
-=======
-      // 1. KULOODPORNY OPTYMISTYCZNY UPDATE (Głęboka kopia)
-      set(state => {
-          const newColumns = JSON.parse(JSON.stringify(state.columns));
-          let movedItem = null;
-
-          // Szukamy i wycinamy taska ze starego miejsca
-          for (const col of newColumns) {
-              const itemIndex = col.items.findIndex((i: any) => i.id === itemId);
-              if (itemIndex !== -1) {
-                  movedItem = col.items.splice(itemIndex, 1)[0];
-                  break;
-              }
-          }
-
-          // Aktualizujemy dane taska i wrzucamy do nowej kolumny
-          if (movedItem) {
-              movedItem.columnId = targetColumnId;
-              movedItem.rowId = targetRowId;
-              
-              const targetCol = newColumns.find((c: any) => c.id === targetColumnId);
-              if (targetCol) {
-                  targetCol.items.push(movedItem);
-              }
-          }
-
-          return { columns: newColumns };
-      });
-
-      // 2. WYSYŁKA DO NEST.JS I WYŁAPANIE BŁĘDU
-      try {
-          await client.patch(`/kanban/items/${itemId}`, { columnId: targetColumnId, rowId: targetRowId });
-          get().fetchBoard(); 
-      } catch (e: any) { 
-          // TEN ALERT POKAŻE CI, ŻE TO BACKEND BLOKUJE AKCJĘ!
-          alert(`Uwaga: Backend odrzucił przeniesienie!\nZajrzyj w konsolę (F12) w przeglądarce i terminal NestJS, aby sprawdzić dlaczego.\n\nBłąd: ${e.message}`);
-          console.error("Szczegóły błędu backendu:", e); 
-          // Cofamy UI do stanu z bazy (to dlatego wcześniej miałeś iluzję, że przeciąganie nie działa)
-          get().fetchBoard(); 
-      }
->>>>>>> 3fbcbef (adding working drag and drop)
   }
 }));
