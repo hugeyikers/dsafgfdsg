@@ -341,7 +341,19 @@ const KanbanBoard = () => {
         
         const liveColColor = (panel.isOpen && activeField === 'color' && panel.type === 'column' && panel.item?.id === col.id) ? editValue : col.color;
         const cellBorderColor = isOverLimit ? '#f87171' : (isBacklog ? '#d1d5db' : (liveColColor && liveColColor !== '#ffffff' ? liveColColor : '#e5e7eb'));
-        const cellBgColor = isOverLimit ? '#fef2f2' : (isBacklog ? 'transparent' : rowColor);
+        let cellBgColor = rowColor;
+        if (isOverLimit) {
+            cellBgColor = '#fef2f2';
+        } else if (isBacklog && rowId !== null) {
+            // Backlog w przypisanym rzędzie - przejmuje 30% koloru rzędu
+            cellBgColor = rowColor !== '#ffffff' ? `color-mix(in srgb, ${rowColor} 30%, white)` : '#fafafa';
+        } else if (!isBacklog && rowId === null) {
+            // Unlabeled rząd dla standardowej kolumny - przejmuje 30% koloru kolumny
+            cellBgColor = liveColColor && liveColColor !== '#ffffff' ? `color-mix(in srgb, ${liveColColor} 30%, white)` : '#fafafa';
+        } else if (isBacklog && rowId === null) {
+            // Przecięcie kolumny Backlog i rzędu Unlabeled
+            cellBgColor = '#f3f4f6';
+}
 
         return (
             <div 
@@ -517,7 +529,7 @@ const KanbanBoard = () => {
                     >
                         <div id="kanban-board-container" className="inline-block min-w-full pb-20 bg-white border-2 border-gray-200 rounded-2xl shadow-sm mt-16">
                             
-                            <div className="flex sticky top-0 z-20 items-stretch border-b-2 border-gray-200 bg-white shadow-sm h-[88px]">
+                            <div className="flex sticky top-0 z-40 items-stretch border-b-2 border-gray-200 bg-white shadow-sm h-[88px]">
                                 
                                 <div className="w-56 h-full flex-shrink-0 border-r-2 border-gray-200 bg-white relative overflow-hidden group/corner">
                                     <button
@@ -557,7 +569,7 @@ const KanbanBoard = () => {
                                             }}
                                             className={`group flex-shrink-0 border-r-2 border-dashed flex flex-col items-center justify-center transition-colors select-none cursor-pointer relative ${isEditedBacklog ? 'ring-inset ring-4 ring-blue-500 bg-blue-50/30 z-30' : ''}`}
                                             // Używamy zmiennej COLUMN_WIDTH
-                                            style={{ width: `${COLUMN_WIDTH}px`, minWidth: `${COLUMN_WIDTH}px`, borderColor: isEditedBacklog ? '#3b82f6' : '#d1d5db', backgroundColor: isEditedBacklog ? '#eff6ff' : 'transparent' }}
+                                            style={{ width: `${COLUMN_WIDTH}px`, minWidth: `${COLUMN_WIDTH}px`, borderColor: isEditedBacklog ? '#3b82f6' : '#d1d5db', backgroundColor: isEditedBacklog ? '#eff6ff' : '#ffffff' }}
                                         >
                                             <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
                                             <h3 className="font-black text-sm tracking-widest uppercase text-center w-full truncate text-gray-400 px-4 relative z-10">{backlogColumn.title}</h3>

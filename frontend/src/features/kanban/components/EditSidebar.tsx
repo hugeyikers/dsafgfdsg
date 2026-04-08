@@ -269,16 +269,18 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                     </div>
                                 ) : (
                                     <div 
-                                        className="group relative flex items-center border-2 border-transparent hover:border-purple-200 bg-transparent hover:bg-white transition-colors cursor-pointer"
+                                        className={`group relative flex items-center border-2 border-transparent ${isBacklogPanel ? '' : 'hover:border-purple-200 bg-transparent hover:bg-white cursor-pointer'} transition-colors`}
                                         style={{ borderRadius: DETAILS_FIELD_RADIUS, paddingLeft: '14px', paddingRight: '14px', height: '56px' }} 
-                                        onDoubleClick={() => startEdit('title', panel.item.title)}
-                                        onMouseEnter={() => dispatchHover('Task Title', 'Double click to edit title')}
+                                        onDoubleClick={() => { if (!isBacklogPanel) startEdit('title', panel.item.title); }}
+                                        onMouseEnter={() => { if (!isBacklogPanel) dispatchHover('Task Title', 'Double click to edit title'); }}
                                         onMouseLeave={() => dispatchHover(null)}
                                     >
-                                        <h2 className="text-base font-bold text-gray-900 leading-tight break-words">{panel.item?.title || `Untitled ${panel.type}`}</h2>
-                                        <div className="absolute bottom-1 right-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
-                                            <span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span>
-                                        </div>
+                                        <h2 className={`text-base font-bold leading-tight break-words ${isBacklogPanel ? 'text-gray-500 italic' : 'text-gray-900'}`}>{panel.item?.title || `Untitled ${panel.type}`}</h2>
+                                        {!isBacklogPanel && (
+                                            <div className="absolute bottom-1 right-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
+                                                <span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
