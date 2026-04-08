@@ -334,26 +334,27 @@ const KanbanBoard = () => {
         return result;
     };
 
-    const renderCell = (col: any, rowId: number | null, isBacklog: boolean, rowColor: string = '#ffffff') => {
+    // USUNIĘTO rowColor z parametrów, bo kolor tła zależy teraz tylko od kolumny!
+    const renderCell = (col: any, rowId: number | null, isBacklog: boolean) => {
         const items = getItems(col.id, rowId);
         const droppableId = `cell-${col.id}-${rowId}`;
         const isOverLimit = col.limit > 0 && col.items.length > col.limit;
         
         const liveColColor = (panel.isOpen && activeField === 'color' && panel.type === 'column' && panel.item?.id === col.id) ? editValue : col.color;
-        const cellBorderColor = isOverLimit ? '#f87171' : (isBacklog ? '#d1d5db' : (liveColColor && liveColColor !== '#ffffff' ? liveColColor : '#e5e7eb'));
-        let cellBgColor = rowColor;
+        
+        // Zawsze sztywny kolor ramki (odpowiada tailwindowemu border-gray-200)
+        const cellBorderColor = isOverLimit ? '#f87171' : '#e5e7eb';
+        
+        // Głównym kolorem komórki jest kolor przypisany do kolumny
+        let cellBgColor = liveColColor && liveColColor !== '#ffffff' ? liveColColor : '#ffffff';
+        
         if (isOverLimit) {
             cellBgColor = '#fef2f2';
-        } else if (isBacklog && rowId !== null) {
-            // Backlog w przypisanym rzędzie - przejmuje 30% koloru rzędu
-            cellBgColor = rowColor !== '#ffffff' ? `color-mix(in srgb, ${rowColor} 30%, white)` : '#fafafa';
-        } else if (!isBacklog && rowId === null) {
-            // Unlabeled rząd dla standardowej kolumny - przejmuje 30% koloru kolumny
-            cellBgColor = liveColColor && liveColColor !== '#ffffff' ? `color-mix(in srgb, ${liveColColor} 30%, white)` : '#fafafa';
-        } else if (isBacklog && rowId === null) {
-            // Przecięcie kolumny Backlog i rzędu Unlabeled
-            cellBgColor = '#f3f4f6';
-}
+        } else if (isBacklog || rowId === null) {
+            // Jeśli to komórka Unlabeled lub Backlog - stosujemy 40% krycia koloru
+            cellBgColor = liveColColor && liveColColor !== '#ffffff' 
+                'rgb(255, 255, 255)';
+        }
 
         return (
             <div 
@@ -362,7 +363,6 @@ const KanbanBoard = () => {
                     ${isBacklog ? 'border-dashed' : ''}
                     ${isOverLimit ? 'ring-inset ring-2 ring-red-400/50' : ''}
                 `}
-                // Używamy zmiennej do szerokości komórki
                 style={{ width: `${COLUMN_WIDTH}px`, minWidth: `${COLUMN_WIDTH}px`, backgroundColor: cellBgColor, borderColor: cellBorderColor }}
                 onClick={(e) => {
                     e.stopPropagation();
@@ -391,7 +391,6 @@ const KanbanBoard = () => {
                             className={`flex-1 flex flex-col transition-colors h-full relative
                                 ${snapshot.isDraggingOver ? (isOverLimit ? 'bg-red-500/10' : 'bg-black/5 shadow-inner') : ''}
                             `}
-                            // Zastosowanie zmiennych do marginesów wewnątrz komórki (góra, dół, boki)
                             style={{ 
                                 paddingLeft: `${CELL_PADDING_X}px`, 
                                 paddingRight: `${CELL_PADDING_X}px`, 
@@ -568,8 +567,7 @@ const KanbanBoard = () => {
                                                 openPanel('view', 'column', backlogColumn, null, true); 
                                             }}
                                             className={`group flex-shrink-0 border-r-2 border-dashed flex flex-col items-center justify-center transition-colors select-none cursor-pointer relative ${isEditedBacklog ? 'ring-inset ring-4 ring-blue-500 bg-blue-50/30 z-30' : ''}`}
-                                            // Używamy zmiennej COLUMN_WIDTH
-                                            style={{ width: `${COLUMN_WIDTH}px`, minWidth: `${COLUMN_WIDTH}px`, borderColor: isEditedBacklog ? '#3b82f6' : '#d1d5db', backgroundColor: isEditedBacklog ? '#eff6ff' : '#ffffff' }}
+                                            style={{ width: `${COLUMN_WIDTH}px`, minWidth: `${COLUMN_WIDTH}px`, borderColor: isEditedBacklog ? '#3b82f6' : '#e5e7eb', backgroundColor: isEditedBacklog ? '#eff6ff' : '#ffffff' }}
                                         >
                                             <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
                                             <h3 className="font-black text-sm tracking-widest uppercase text-center w-full truncate text-gray-400 px-4 relative z-10">{backlogColumn.title}</h3>
@@ -605,8 +603,7 @@ const KanbanBoard = () => {
                                                                 }}
                                                                 className={`group flex-shrink-0 border-r-2 flex flex-col items-center justify-center select-none cursor-grab active:cursor-grabbing transition-shadow transition-colors relative
                                                                     ${snapshot.isDragging ? 'z-50 shadow-2xl ring-2 ring-purple-500 border-none rounded-xl' : ''} ${isOverLimit ? 'ring-inset ring-2 ring-red-500' : ''} ${isEditedCol ? 'ring-inset ring-4 ring-blue-500 z-30' : ''}`}
-                                                                // Używamy zmiennej COLUMN_WIDTH
-                                                                style={{ width: `${COLUMN_WIDTH}px`, minWidth: `${COLUMN_WIDTH}px`, backgroundColor: isEditedCol ? '#eff6ff' : (isOverLimit ? '#fef2f2' : (liveColColor || '#ffffff')), borderColor: isEditedCol ? '#3b82f6' : (isOverLimit ? '#ef4444' : (liveColColor && liveColColor !== '#ffffff' ? liveColColor : '#e5e7eb')), ...provided.draggableProps.style }}
+                                                                style={{ width: `${COLUMN_WIDTH}px`, minWidth: `${COLUMN_WIDTH}px`, backgroundColor: isEditedCol ? '#eff6ff' : (isOverLimit ? '#fef2f2' : (liveColColor || '#ffffff')), borderColor: isEditedCol ? '#3b82f6' : (isOverLimit ? '#ef4444' : '#e5e7eb'), ...provided.draggableProps.style }}
                                                             >
                                                                 <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
                                                                 <div className="flex flex-col items-center justify-center w-full px-4 mt-2 relative z-10">
@@ -667,10 +664,11 @@ const KanbanBoard = () => {
                                                                 </div>
                                                             </div>
 
-                                                            {backlogColumn && renderCell(backlogColumn, row.id, true, liveRowColor)}
-                                                            {draggableColumns.map(col => renderCell(col, row.id, false, liveRowColor))}
+                                                            {backlogColumn && renderCell(backlogColumn, row.id, true)}
+                                                            {draggableColumns.map(col => renderCell(col, row.id, false))}
                                                             
-                                                            <div className="flex-1" style={{ backgroundColor: isEditedRow ? '#eff6ff' : liveRowColor }}></div>
+                                                            {/* Puste, przezroczyste pole na końcu - blokuje ciągnięcie koloru! */}
+                                                            <div className="flex-1 bg-transparent"></div>
                                                         </div>
                                                     )}
                                                 </Draggable>
@@ -688,9 +686,10 @@ const KanbanBoard = () => {
                                 >
                                     <span className="font-black text-sm uppercase tracking-widest text-gray-400">Unlabeled</span>
                                 </div>
-                                {backlogColumn && renderCell(backlogColumn, null, true, '#ffffff')}
-                                {draggableColumns.map(col => renderCell(col, null, false, '#ffffff'))}
-                                <div className="flex-1 bg-white border-b-2 border-transparent" onClick={(e) => e.stopPropagation()}></div>
+                                {backlogColumn && renderCell(backlogColumn, null, true)}
+                                {draggableColumns.map(col => renderCell(col, null, false))}
+                                {/* Puste, przezroczyste pole na końcu - blokuje ciągnięcie koloru! */}
+                                <div className="flex-1 bg-transparent" onClick={(e) => e.stopPropagation()}></div>
                             </div>
                         </div>
                     </div>
@@ -698,7 +697,7 @@ const KanbanBoard = () => {
                 
                 {(isDeletingSidebar || isClearingSidebar) && (
                     <div 
-                        className="absolute inset-0 z-30 bg-black/40 backdrop-blur-sm transition-all duration-300 pointer-events-auto"
+                        className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm transition-all duration-300 pointer-events-auto"
                         onClick={() => {
                             setIsDeletingSidebar(false);
                             setIsClearingSidebar(false);
