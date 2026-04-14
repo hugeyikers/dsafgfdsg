@@ -30,12 +30,11 @@ export class KanbanService implements OnModuleInit {
       include: {
         items: {
           orderBy: { order: 'asc' },
-          include: { assignedTo: true },
+          include: { assignedUsers: true },
         },
       },
       orderBy: { order: 'asc' },
     });
-
     const rows = await this.prisma.kanbanRow.findMany({
       orderBy: { order: 'asc' },
     });
@@ -98,21 +97,32 @@ export class KanbanService implements OnModuleInit {
         content: dto.content,
         columnId: dto.columnId,
         rowId: dto.rowId || null,
-        assignedToId: dto.assignedToId || null,
         order,
-        color: dto.color || null
+        color: dto.color || null,
+        // Użyj 'connect' aby powiązać tablicę ID z użytkownikami
+        assignedUsers: {
+            connect: dto.assignedUsersIds?.map(id => ({ id })) || []
+        }
       },
-      include: { assignedTo: true },
+      include: { assignedUsers: true },
     });
   }
 
   async updateItem(id: number, dto: UpdateItemDto) {
-      // Obsługa przeciągania (zmiana columnId i order) wymagałaby bardziej skomplikowanej logiki
-      // sortowania wszystkich elementów, tutaj uproszczona aktualizacja
+      const { assignedUsersIds, ...restDto } = dto;
+      
+      const updateData: any = { ...restDto };
+      
+      if (assignedUsersIds !== undefined) {
+          updateData.assignedUsers = {
+              set: assignedUsersIds.map(userId => ({ id: userId }))
+          };
+      }
+
       return this.prisma.kanbanItem.update({
           where: { id },
-          data: dto,
-          include: { assignedTo: true }
+          data: updateData,
+          include: { assignedUsers: true }
       });
   }
 

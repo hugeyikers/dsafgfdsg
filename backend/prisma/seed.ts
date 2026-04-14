@@ -110,21 +110,27 @@ async function main() {
                  title: 'Skonfigurować projekt',
                  content: 'Zainstalować zależności i przygotować .env',
                  order: 0,
-                 assignedToId: admin.id,
+                 assignedUsers: {
+                    connect: [{ id: admin.id }] 
+                 },
                  rowId: standardRow?.id
              },
              { 
                  title: 'Sprawdzić logowanie i rejestrację',
                  content: 'Przetestować endpointy auth/login i auth/register', 
                  order: 1,
-                 assignedToId: user.id,
+                 assignedUsers: {
+                    connect: [{ id: user.id }] 
+                 },
                  rowId: standardRow?.id
              },
              {
                  title: 'Obsługa błędów',
                  content: 'Dodać globalny filtr wyjątków',
                  order: 2,
-                 assignedToId: dev.id,
+                 assignedUsers: {
+                    connect: [{ id: dev.id }] 
+                 },
                  rowId: urgentRow?.id
              }
           ]
@@ -143,14 +149,18 @@ async function main() {
                  title: 'Implementacja frontendu (Swimlanes)', 
                  content: 'Dodać widok wierszy w React',
                  order: 0,
-                 assignedToId: dev.id,
+                  assignedUsers: {
+                    connect: [{ id: dev.id }] 
+                 },
                  rowId: urgentRow?.id
              },
              {
                  title: 'Testy jednostkowe backendu',
                  content: 'Napisać testy dla serwisu Kanban',
                  order: 1,
-                 assignedToId: admin.id,
+                 assignedUsers: {
+                    connect: [{ id: admin.id }] 
+                 },
                  rowId: standardRow?.id
              }
           ]
@@ -169,7 +179,9 @@ async function main() {
                      title: 'Weryfikacja zmian w migracji',
                      content: 'Sprawdzić poprawność SQL',
                      order: 0,
-                     assignedToId: admin.id,
+                     assignedUsers: {
+                        connect: [{ id: admin.id }] 
+                     },
                      rowId: urgentRow?.id
                  }
               ]
@@ -188,14 +200,15 @@ async function main() {
                  title: 'Inicjalizacja repozytorium', 
                  content: 'Git init i pierwszy commit',
                  order: 0,
-                 assignedToId: admin.id,
+                 assignedUsers: {
+                    connect: [{ id: admin.id }] 
+                 },
                  rowId: standardRow?.id
              },
              {
                  title: 'Konfiguracja Docker',
                  content: 'Dockerfile i docker-compose.yml',
                  order: 1,
-                 assignedToId: null, // Unassigned
                  rowId: standardRow?.id
              }
           ]
