@@ -28,6 +28,7 @@ export class UpdateItemDto {
     @ValidateIf((object, value) => value !== null)
     @IsArray()
     @IsInt({ each: true })
+    @ValidateIf((object, value) => value !== null)
     @IsOptional()
     assignedUsersIds?: number[];
 
