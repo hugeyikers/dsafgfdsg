@@ -75,7 +75,8 @@ const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClic
                     style={{ 
                         ...provided.draggableProps.style, 
                         backgroundColor: isNativeDragOver ? '#eff6ff' : (isEdited ? '#eff6ff' : (item.color || '#ffffff')),
-                        zIndex: snapshot.isDragging ? 9999 : (isEdited ? 30 : undefined)
+                        zIndex: snapshot.isDragging ? 9999 : (isEdited ? 30 : undefined),
+
                     }}
                 >
                     <div className="flex items-center justify-center flex-1 px-1 mb-2 w-full text-center pointer-events-none relative z-20">
@@ -93,14 +94,20 @@ const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClic
                                 {item.assignedTo.fullName.substring(0, 2).toUpperCase()}
                             </div>
                         ) : (
-                            <div className="text-[9px] font-semibold italic text-gray-400 border border-dashed border-gray-300 px-2 py-0.5 rounded-full bg-white/70">
-                                Unassigned
+                            <div>
+                                
                             </div>
                         )}
                     </div>
 
                     <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 pl-8">
-                        <span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full backdrop-blur-sm border border-gray-100 shadow-sm">Double click</span>
+                        <span 
+                            style={{
+                                padding:2
+                            }}
+                            className="text-[8px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full backdrop-blur-sm border border-gray-100 shadow-sm">
+                            Double click to view details
+                        </span>
                     </div>
                 </div>
             )}

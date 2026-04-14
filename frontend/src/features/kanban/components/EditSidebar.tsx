@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, X, Save, LayoutPanelLeft, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, X, Save, LayoutPanelLeft, AlertTriangle, PanelLeftClose, BrushCleaning } from 'lucide-react';
 import { useUserStore } from '../../../store/useUserStore';
 import { useKanbanStore } from '../../../store/useKanbanStore';
 
@@ -270,7 +270,12 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                 ) : (
                                     <div 
                                         className={`group relative flex items-center border-2 border-transparent ${isBacklogPanel ? '' : 'hover:border-purple-200 bg-transparent hover:bg-white cursor-pointer'} transition-colors`}
-                                        style={{ borderRadius: DETAILS_FIELD_RADIUS, paddingLeft: '14px', paddingRight: '14px', height: '56px' }} 
+                                        style={{ 
+                                            borderRadius: DETAILS_FIELD_RADIUS, 
+                                            paddingLeft: '14px', 
+                                            paddingRight: '14px', 
+                                            height: '56px'
+                                        }} 
                                         onDoubleClick={() => { if (!isBacklogPanel) startEdit('title', panel.item.title); }}
                                         onMouseEnter={() => { if (!isBacklogPanel) dispatchHover('Task Title', 'Double click to edit title'); }}
                                         onMouseLeave={() => dispatchHover(null)}
@@ -278,7 +283,14 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                         <h2 className={`text-base font-bold leading-tight break-words ${isBacklogPanel ? 'text-gray-500 italic' : 'text-gray-900'}`}>{panel.item?.title || `Untitled ${panel.type}`}</h2>
                                         {!isBacklogPanel && (
                                             <div className="absolute bottom-1 right-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
-                                                <span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span>
+                                                <span 
+                                                    style={{
+                                                        paddingTop: 3,
+                                                        paddingBottom:3,
+                                                        paddingLeft:5,
+                                                        paddingRight:5
+                                                    }}
+                                                    className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span>
                                             </div>
                                         )}
                                     </div>
@@ -341,7 +353,14 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                                 <span className="italic text-gray-400 text-xs pl-1 select-none">Unassigned</span>
                                             )}
                                             <div className="absolute bottom-1 right-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
-                                                <span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span>
+                                                <span 
+                                                    style={{
+                                                        paddingTop: 3,
+                                                        paddingBottom:3,
+                                                        paddingLeft:5,
+                                                        paddingRight:5
+                                                    }}
+                                                    className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span>
                                             </div>
                                         </div>
                                     )}
@@ -379,7 +398,14 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                                 {panel.item?.content && panel.item.content !== 'none' ? panel.item.content : <span className="italic text-gray-400">No description provided.</span>}
                                             </p>
                                             <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
-                                                <span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span>
+                                                <span 
+                                                    style={{
+                                                        paddingTop: 3,
+                                                        paddingBottom:3,
+                                                        paddingLeft:5,
+                                                        paddingRight:5
+                                                    }}
+                                                    className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span>
                                             </div>
                                         </div>
                                     )}
@@ -427,7 +453,14 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                         >
                                             <span className="text-sm font-bold text-gray-800 select-none">{panel.item.limit === 0 ? 'None (No limit)' : panel.item.limit}</span>
                                             <div className="absolute bottom-1 right-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
-                                                <span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span>
+                                                <span
+                                                    style={{
+                                                        paddingTop: 3,
+                                                        paddingBottom:3,
+                                                        paddingLeft:5,
+                                                        paddingRight:5
+                                                    }} 
+                                                    className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span>
                                             </div>
                                         </div>
                                     )}
@@ -485,7 +518,14 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                         <div className="w-8 h-8 rounded-full border-2 border-gray-200 shadow-inner flex-shrink-0" style={{ backgroundColor: panel.item?.color || '#ffffff' }} />
                                         <span className="text-sm font-bold text-gray-800 select-none">Card Color</span>
                                         <div className="absolute bottom-1 right-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
-                                            <span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span>
+                                            <span 
+                                                style={{
+                                                        paddingTop: 3,
+                                                        paddingBottom:3,
+                                                        paddingLeft:5,
+                                                        paddingRight:5
+                                                    }}
+                                                className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span>
                                         </div>
                                     </div>
                                 )}
@@ -567,7 +607,7 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                     </button>
                                 ) : panel.mode === 'view' && !isBacklogPanel ? (
                                     <button key="btn-delete" onClick={() => setIsDeleting(true)} className="w-full h-full flex items-center justify-center text-red-500 bg-red-50 hover:text-red-600 hover:bg-red-100 transition-colors border-r border-gray-200 cursor-pointer rounded-none outline-none select-none" title={`Delete ${panel.type}`}>
-                                        <Trash2 size={24}/>
+                                        <Trash2 size={28}/>
                                     </button>
                                 ) : (
                                     <div key="btn-empty-left" className="w-full h-full bg-gray-50 border-r border-gray-200"></div>
@@ -590,8 +630,11 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                                 key="btn-clear" 
                                                 onClick={() => setIsClearing(true)} 
                                                 className="flex-1 h-full flex items-center justify-center bg-white text-red-600 text-xs font-black uppercase tracking-widest hover:bg-red-50 border-r border-gray-200 transition-colors cursor-pointer rounded-none outline-none select-none"
+                                                style={{
+                                                    backgroundColor:"#ffae00"
+                                                }}
                                             >
-                                                Clear Tasks
+                                                <BrushCleaning size={28} />
                                             </button>
                                         )}
                                         <button 
@@ -605,8 +648,12 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                                 closeBtnMouseDown.current = false;
                                             }}
                                             className="flex-1 h-full flex items-center justify-center bg-gray-900 text-white text-xs font-bold hover:bg-black transition-colors cursor-pointer rounded-none outline-none select-none"
+                                            style={{
+                                                color:"white",
+                                                backgroundColor:"#797979"
+                                            }}
                                         >
-                                            Close Details
+                                            <PanelLeftClose size={28}/>
                                         </button>
                                     </>
                                 )}

@@ -425,64 +425,77 @@ const KanbanBoard = () => {
                 </Droppable>
                 
                 <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none pl-8">
-                    <span className="text-[11px] italic text-gray-400 bg-white/80 px-2 py-0.5 rounded-full shadow-sm">Double click to add task</span>
+                    <span 
+                        style = {{
+                            padding:4
+                        }}
+                        className="text-[11px] italic text-gray-400 bg-white/80 px-2 py-0.5 rounded-full shadow-sm">Double click to add task</span>
                 </div>
             </div>
         );
     };
 
     const renderTeamBar = () => {
-        if (!headerNode) return null;
-        
-        return createPortal(
-            <div className="flex items-center gap-4 pl-8 h-14">
-                {users.map(u => {
-                    const taskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === u.id).length;
-                    const isOverLimit = taskCount >= maxTasksPerUser;
-                    const isFiltered = filteredUserIds.includes(u.id);
-                    const isAnyFilterActive = filteredUserIds.length > 0;
-                    const isDimmed = isAnyFilterActive && !isFiltered;
+    if (!headerNode) return null;
+    
+    return createPortal(
+        <div
+            className="flex items-center gap-4 pl-8 h-14">
+            
+            {/* 1. PRZYCISK CLEAR FILTERS*/}
+            {filteredUserIds.length > 0 && (
+                <button 
+                    onClick={() => setFilteredUserIds([])} 
+                    title="Clear Filters"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors border-2 hover:border-red-200"
+                >
+                    <X size={22} />
+                </button>
+                
+            )}
 
-                    return (
-                        <div
-                            key={u.id}
-                            draggable={false} 
-                            onClick={() => setFilteredUserIds(prev => prev.includes(u.id) ? prev.filter(id => id !== u.id) : [...prev, u.id])}
-                            onDoubleClick={(e) => { e.stopPropagation(); setFilteredUserIds([u.id]); }}
-                            className={`group relative flex flex-col items-center transition-all select-none cursor-pointer ${isDimmed ? 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0' : ''}`}
-                            title={`${u.fullName} (${u.email}) • ${taskCount}/${maxTasksPerUser} tasks assigned`}
-                        >
-                            <div 
-                                draggable={!isOverLimit}
-                                onDragStart={(e) => { 
-                                    e.stopPropagation(); 
-                                    e.dataTransfer.setData('text/plain', u.id.toString()); 
-                                    e.dataTransfer.effectAllowed = 'copy'; 
-                                }}
-                                className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm shadow-sm border-2 ${!isOverLimit ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed'} ${isFiltered ? 'bg-blue-100 text-blue-700 border-blue-500 ring-4 ring-blue-500/20' : isOverLimit ? 'bg-gray-200 text-gray-500 border-gray-300' : 'bg-white text-gray-700 border-gray-200 hover:border-blue-400 transition-all'}`}
-                            >
-                                {u.fullName.substring(0, 2).toUpperCase()}
-                            </div>
-                            <span className={`text-[11px] font-black mt-1 leading-none ${isOverLimit ? 'text-gray-400' : 'text-gray-500'}`}>
-                                {taskCount}/{maxTasksPerUser}
-                            </span>
-                        </div>
-                    );
-                })}
-                {filteredUserIds.length > 0 && (
-                    <button 
-                        onClick={() => setFilteredUserIds([])} 
-                        title="Clear Filters"
-                        className="flex items-center justify-center ml-2 text-red-500 hover:bg-red-50 p-2.5 rounded-lg transition-colors border border-transparent hover:border-red-200"
+            {/* 2. LISTA UŻYTKOWNIKÓW */}
+            {users.map(u => {
+                const taskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === u.id).length;
+                const isOverLimit = taskCount >= maxTasksPerUser;
+                const isFiltered = filteredUserIds.includes(u.id);
+                const isAnyFilterActive = filteredUserIds.length > 0;
+                const isDimmed = isAnyFilterActive && !isFiltered;
+
+                return (
+                    <div
+                        key={u.id}
+                        draggable={false} 
+                        onClick={() => setFilteredUserIds(prev => prev.includes(u.id) ? prev.filter(id => id !== u.id) : [...prev, u.id])}
+                        onDoubleClick={(e) => { e.stopPropagation(); setFilteredUserIds([u.id]); }}
+                        className={`group relative flex flex-col items-center transition-all select-none cursor-pointer ${isDimmed ? 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0' : ''}`}
+                        title={`${u.fullName} (${u.email}) • ${taskCount}/${maxTasksPerUser} tasks assigned`}
                     >
-                        <X size={22} />
-                    </button>
-                )}
-            </div>,
-            headerNode
-        );
-    };
-
+                        <div 
+                            draggable={!isOverLimit}
+                            onDragStart={(e) => { 
+                                e.stopPropagation(); 
+                                e.dataTransfer.setData('text/plain', u.id.toString()); 
+                                e.dataTransfer.effectAllowed = 'copy'; 
+                            }}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm shadow-sm border-2 ${!isOverLimit ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed'} ${isFiltered ? 'bg-blue-100 text-blue-700 border-blue-500 ring-4 ring-blue-500/20' : isOverLimit ? 'bg-gray-200 text-gray-500 border-gray-300' : 'bg-white text-gray-700 border-gray-200 hover:border-blue-400 transition-all'}`}
+                        >
+                            {u.fullName.substring(0, 2).toUpperCase()}
+                        </div>
+                        <span 
+                            style={{
+                                paddingTop:6
+                            }}
+                            className={`text-[11px] font-black mt-1 leading-none ${isOverLimit ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {taskCount}/{maxTasksPerUser}
+                        </span>
+                    </div>
+                );
+            })}
+        </div>,
+        headerNode
+    );
+}
     return (
         <div className="h-full flex w-full bg-gray-50 relative overflow-hidden">
             {renderTeamBar()}
@@ -571,8 +584,12 @@ const KanbanBoard = () => {
                                         >
                                             <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
                                             <h3 className="font-black text-sm tracking-widest uppercase text-center w-full truncate text-gray-400 px-4 relative z-10">{backlogColumn.title}</h3>
-                                            <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                                                <span className="text-[10px] italic text-gray-400 bg-white/70 px-2 py-0.5 rounded-full">Double click to view</span>
+                                            <div className="absolute bottom-0.5 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                                                <span 
+                                                    style={{
+                                                        padding:2
+                                                    }}
+                                                    className="text-[10px] italic text-gray-400 bg-white/70 px-2 py-0.5 rounded-full">Double click to view</span>
                                             </div>
                                         </div>
                                     );
@@ -609,13 +626,24 @@ const KanbanBoard = () => {
                                                                 <div className="flex flex-col items-center justify-center w-full px-4 mt-2 relative z-10">
                                                                     <h3 className={`font-black text-sm tracking-widest uppercase text-center w-full truncate ${isOverLimit ? 'text-red-600' : 'text-gray-900'}`}>{col.title}</h3>
                                                                     {col.limit > 0 && (
-                                                                        <span className={`text-xs font-bold mt-2 px-3 py-1 rounded-full border ${isOverLimit ? 'bg-red-100 text-red-700 border-red-200' : 'bg-gray-100/80 text-gray-500 border-gray-200'}`}>
+                                                                        <span 
+                                                                            style={{
+                                                                                paddingTop:2,
+                                                                                paddingBottom:2,
+                                                                                paddingLeft:5,
+                                                                                paddingRight:5
+                                                                            }}
+                                                                            className={`text-xs font-bold mt-2 px-3 py-1 rounded-full border ${isOverLimit ? 'bg-red-100 text-red-700 border-red-200' : 'bg-gray-100/80 text-gray-500 border-gray-200'}`}>
                                                                             WIP: {col.items.length} / {col.limit}
                                                                         </span>
                                                                     )}
                                                                 </div>
-                                                                <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                                                                    <span className="text-[10px] italic text-gray-500 bg-white/70 px-2 py-0.5 rounded-full">Drag to reorder / Double click</span>
+                                                                <div className="absolute bottom-0.5 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                                                                    <span 
+                                                                        style={{
+                                                                            padding:2
+                                                                        }}
+                                                                        className="text-[10px] italic text-gray-500 bg-white/70 px-2 py-0.5 rounded-full">Drag to reorder / Double click to view</span>
                                                                 </div>
                                                             </div>
                                                         )}
@@ -660,7 +688,11 @@ const KanbanBoard = () => {
                                                                 <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
                                                                 <span className="font-black text-sm uppercase tracking-widest text-gray-900 drop-shadow-sm mb-2 relative z-10">{row.title}</span>
                                                                 <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                                                                    <span className="text-[10px] italic text-gray-500 bg-white/70 px-2 py-0.5 rounded-full">Drag to reorder / Double click</span>
+                                                                    <span
+                                                                        style={{
+                                                                            padding:2
+                                                                        }} 
+                                                                        className="text-[10px] italic text-gray-500 bg-white/70 px-2 py-0.5 rounded-full">Drag to reorder / Double click to view</span>
                                                                 </div>
                                                             </div>
 
