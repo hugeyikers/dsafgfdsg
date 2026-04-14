@@ -54,6 +54,17 @@ model KanbanItem {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   color         String?
+  subtasks      KanbanItemSubTask[] 
+}
+
+model KanbanItemSubTask {
+  id            Int         @id @default(autoincrement())
+  itemId        Int
+  item          KanbanItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  title         String
+  content       String
+  createdAt     DateTime    @default(now())
+  isDone        Boolean     @default(false)
 }
 
 enum Role {
