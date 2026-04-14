@@ -188,7 +188,9 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                             )}
                                         </div>
                                     ) : activeField === 'assignedUsersIds' ? (
-                                        <div tabIndex={0} ref={el => el?.focus()} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) cancelEdit(); }} onKeyDown={handleKeyDownDefault} className="outline-none">
+                                        <div 
+                                            tabIndex={0} ref={el => el?.focus()} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) cancelEdit(); }} onKeyDown={handleKeyDownDefault} className="outline-none"
+                                            >
                                             {/* Prostokątny panel pokazujący aktywne wybory */}
                                             <div className="bg-purple-50 border-2 border-purple-400 p-3 shadow-sm mb-3 flex items-center gap-2" 
                                                 style={{ 
@@ -215,7 +217,8 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                             </div>
                                             
                                             {/* Lista wszystkich użytkowników do wyboru */}
-                                            <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1">
+                                            <div 
+                                                className="flex flex-col  gap-2 max-h-[200px] overflow-y-auto pr-1">
                                                 {users.map(u => {
                                                     const isSelected = editValue && editValue.includes(u.id);
                                                     return (
