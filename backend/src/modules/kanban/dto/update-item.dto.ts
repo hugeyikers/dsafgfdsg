@@ -25,6 +25,7 @@ export class UpdateItemDto {
     @IsOptional()
     order?: number;
 
+    @ValidateIf((object, value) => value !== null)
     @IsArray()
     @IsInt({ each: true })
     @IsOptional()

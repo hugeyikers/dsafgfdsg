@@ -18,6 +18,7 @@ export class CreateItemDto {
   @IsOptional()
   rowId?: number | null;
 
+  @ValidateIf((object, value) => value !== null)
   @IsArray()
   @IsInt({ each: true })
   @IsOptional()
