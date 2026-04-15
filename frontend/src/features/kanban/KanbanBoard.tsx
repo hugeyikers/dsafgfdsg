@@ -393,7 +393,13 @@ const KanbanBoard = () => {
                     );
                 })}
                 {filteredUserIds.length > 0 && (
-                    <button onClick={() => setFilteredUserIds([])} title="Clear Filters" className="flex items-center justify-center ml-2 text-red-500 hover:bg-red-50 p-2.5 rounded-lg transition-colors border border-transparent hover:border-red-200"><X size={22} /></button>
+                    <button 
+                        onClick={() => setFilteredUserIds([])} 
+                        title="Clear Filters" 
+                        className=" ml-2 text-red-500 hover:bg-red-50 p-2.5 rounded-lg transition-colors border border-transparent hover:border-red-200">
+                        <X size={22} />
+
+                    </button>
                 )}
             </div>,
             headerNode

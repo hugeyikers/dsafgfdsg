@@ -164,28 +164,56 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                     <label className={`block font-bold uppercase tracking-wider mb-2 ${panel.mode === 'add' || activeField === 'assignedUsersIds' ? 'text-[10px] text-purple-600' : 'text-[10px] text-gray-400'}`}>Assignees</label>
                                     
                                     {panel.mode === 'add' ? (
-                                        <div className="flex flex-col gap-2">
-                                            <select
-                                                className="w-full text-sm font-bold border-2 border-gray-200 bg-white focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all shadow-sm appearance-none cursor-pointer"
-                                                style={{ borderRadius: DETAILS_FIELD_RADIUS, paddingLeft: '14px', paddingRight: '30px', height: '56px' }} value=""
-                                                onChange={(e) => { const val = parseInt(e.target.value); if (!isNaN(val) && !formData.assignedUsersIds.includes(val)) setFormData({...formData, assignedUsersIds: [...formData.assignedUsersIds, val]}); }}
+                                        <div className="outline-none">
+                                            {/* Prostokątny panel pokazujący aktywne wybory */}
+                                            <div className="bg-purple-50 border-2 border-purple-400 p-3 shadow-sm mb-3 flex items-center gap-2" 
+                                                style={{ 
+                                                    borderRadius: DETAILS_FIELD_RADIUS, 
+                                                    minHeight: '56px',
+                                                    paddingLeft:"14px"
+                                                }}
                                             >
-                                                <option value="" disabled>+ Dodaj użytkownika</option>
-                                                {users.filter(u => !formData.assignedUsersIds.includes(u.id)).map(u => <option key={u.id} value={u.id}>{u.fullName}</option>)}
-                                            </select>
-                                            {formData.assignedUsersIds.length > 0 && (
-                                                <div className="flex flex-wrap gap-2 mt-1">
-                                                    {formData.assignedUsersIds.map((id: number) => {
-                                                        const user = users.find(u => u.id === id);
-                                                        return user ? (
-                                                            <div key={user.id} className="flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-200 rounded-full px-3 py-1 shadow-sm">
-                                                                <span className="text-xs font-bold">{user.fullName}</span>
-                                                                <button type="button" className="ml-1 hover:text-red-500 transition-colors focus:outline-none" onClick={() => setFormData({...formData, assignedUsersIds: formData.assignedUsersIds.filter((uid: number) => uid !== user.id)})}><X size={14}/></button>
+                                                {formData.assignedUsersIds && formData.assignedUsersIds.length > 0 ? (
+                                                    <div className="flex -space-x-1.5 pl-1">
+                                                        {formData.assignedUsersIds.map((id: number, idx: number) => {
+                                                            const u = users.find((user: any) => user.id === id);
+                                                            if (!u) return null;
+                                                            return (
+                                                                <div key={u.id} className="w-7 h-7 rounded-full bg-indigo-500 border-[1.5px] border-white flex items-center justify-center text-white text-[9px] font-bold shadow-sm" style={{ zIndex: 100 - idx }} title={u.fullName}>
+                                                                    {u.fullName.substring(0,2).toUpperCase()}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs font-medium text-purple-400 italic">Unassigned</span>
+                                                )}
+                                            </div>
+                                            
+                                            {/* Lista wszystkich użytkowników do wyboru */}
+                                            <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1">
+                                                {users.map(u => {
+                                                    const isSelected = formData.assignedUsersIds && formData.assignedUsersIds.includes(u.id);
+                                                    return (
+                                                        <div
+                                                            key={u.id}
+                                                            onClick={() => setFormData({...formData, assignedUsersIds: isSelected ? formData.assignedUsersIds.filter((x: number) => x !== u.id) : [...formData.assignedUsersIds, u.id]})}
+                                                            className="flex items-center gap-3 p-2 border-2 border-transparent bg-white hover:border-purple-200 cursor-pointer transition-colors"
+                                                            style={{
+                                                                padding:10,
+                                                                borderRadius: DETAILS_FIELD_RADIUS
+                                                            }}
+                                                        >
+                                                            <div className="w-8 h-8 rounded-full bg-indigo-500 border-[1.5px] border-white flex items-center justify-center text-white text-[10px] font-bold shadow-sm">
+                                                                {u.fullName.substring(0,2).toUpperCase()}
                                                             </div>
-                                                        ) : null;
-                                                    })}
-                                                </div>
-                                            )}
+                                                            <span className="text-xs font-bold text-gray-800">{u.fullName}</span>
+                                                            
+                                                            {isSelected && <div className="ml-auto w-3 h-3 rounded-full bg-purple-500 mr-0 shadow-sm"></div>}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     ) : activeField === 'assignedUsersIds' ? (
                                         <div 
@@ -218,7 +246,7 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                             
                                             {/* Lista wszystkich użytkowników do wyboru */}
                                             <div 
-                                                className="flex flex-col  gap-2 max-h-[200px] overflow-y-auto pr-1">
+                                                className="flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1">
                                                 {users.map(u => {
                                                     const isSelected = editValue && editValue.includes(u.id);
                                                     return (
@@ -227,7 +255,8 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                                             onClick={() => setEditValue((prev: number[]) => isSelected ? prev.filter(x => x !== u.id) : [...prev, u.id])}
                                                             className="flex items-center gap-3 p-2 border-2 border-transparent bg-white hover:border-purple-200 cursor-pointer transition-colors"
                                                             style={{
-                                                                padding:10
+                                                                padding:10,
+                                                                borderRadius: DETAILS_FIELD_RADIUS
                                                             }}
                                                         >
                                                             <div className="w-8 h-8 rounded-full bg-indigo-500 border-[1.5px] border-white flex items-center justify-center text-white text-[10px] font-bold shadow-sm">
@@ -235,7 +264,7 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                                             </div>
                                                             <span className="text-xs font-bold text-gray-800">{u.fullName}</span>
                                                             
-                                                            {isSelected && <div className="w-3 h-3 rounded-full bg-purple-500 mr-0 shadow-sm"></div>}
+                                                            {isSelected && <div className="ml-auto w-3 h-3 rounded-full bg-purple-500 mr-0 shadow-sm"></div>}
                                                         </div>
                                                     );
                                                 })}
@@ -267,7 +296,6 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                                 ) : (
                                                     <span className="text-xs font-medium text-gray-400 italic">Unassigned</span>
                                                 )}
-                                                
                                             </div>
                                             <div className="absolute bottom-1 right-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
                                                 <span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span>
