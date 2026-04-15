@@ -49,7 +49,7 @@ const TeamSidebar: React.FC<TeamSidebarProps> = ({
                 <div style={{ width: `${USERS_SIDEBAR_WIDTH}px` }} className="flex flex-col h-full bg-gray-50/30 overflow-hidden">
                     <div style={{paddingTop: 15}} className="flex-1 overflow-y-auto pt-6 pb-4 flex flex-col items-center gap-5">
                         {users.map(u => {
-                            const taskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === u.id).length;
+                            const taskCount = columns.flatMap(c => c.items).filter(i => i.ass === u.id).length;
                             const isOverLimit = taskCount >= maxTasksPerUser;
                             const isFiltered = filteredUserIds.includes(u.id);
                             const isAnyFilterActive = filteredUserIds.length > 0;

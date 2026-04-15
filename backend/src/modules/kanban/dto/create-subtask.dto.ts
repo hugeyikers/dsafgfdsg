@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsNumber, IsString, IsBoolean} from 'class-validator';
+import { IsInt, IsNotEmpty, IsNumber, IsString, IsBoolean, IsOptional} from 'class-validator';
 
 export class CreateSubtaskDto {
     @IsString()
@@ -15,5 +15,6 @@ export class CreateSubtaskDto {
 
     @IsBoolean()
     @IsNotEmpty()
+    @IsOptional()
     isDone: boolean;
 }

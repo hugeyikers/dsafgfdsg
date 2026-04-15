@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, X, Save, LayoutPanelLeft, AlertTriangle, PanelLeftClose } from 'lucide-react';
+import { Plus, Trash2, X, Save, LayoutPanelLeft, AlertTriangle, PanelLeftClose, Check } from 'lucide-react';
 import { useUserStore } from '../../../store/useUserStore';
 import { useKanbanStore } from '../../../store/useKanbanStore';
 
@@ -35,11 +35,13 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
     DETAILS_FIELD_RADIUS, FOOTER_HEIGHT, FOOTER_LEFT_RATIO, FOOTER_RIGHT_RATIO
 }) => {
     const { users = [] } = useUserStore();
-    const { columns = [], rows = [], removeColumn, removeRow, removeItem } = useKanbanStore();
+    const { columns = [], rows = [], removeColumn, removeRow, removeItem, addSubtask, updateSubtask, removeSubtask } = useKanbanStore();
     
     const [targetMoveId, setTargetMoveId] = useState<number | 'unlabeled'>('unlabeled');
     const [deleteAction, setDeleteAction] = useState<'move' | 'delete'>('move');
     const [isWipWarning, setIsWipWarning] = useState(false);
+    
+    const [newSubtask, setNewSubtask] = useState('');
 
     const showWipWarning = isWipWarning || pendingMove !== null;
     const isBacklogPanel = panel.type === 'column' && panel.item?.title === 'Backlog';
@@ -47,8 +49,9 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
     const isLockedPanel = (panel.type === 'column' && panel.item?.title === 'Backlog') || (panel.type === 'row' && panel.item?.id === 'unlabeled');
     
     const closeBtnMouseDown = React.useRef(false);
+    const [isAssigneeDragOver, setIsAssigneeDragOver] = useState(false);
 
-    useEffect(() => { if (!panel.isOpen) setIsWipWarning(false); }, [panel.isOpen]);
+    useEffect(() => { if (!panel.isOpen) { setIsWipWarning(false); setNewSubtask(''); } }, [panel.isOpen]);
 
     useEffect(() => {
         if (isDeleting && panel.type === 'column' && panel.item) {
@@ -86,6 +89,14 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
             else removeRow(panel.item.id, hasItems ? 'delete_tasks' : undefined);
         }
         setPanel(prev => ({...prev, isOpen: false})); setIsDeleting(false);
+    };
+
+    const handleAddSubtask = async (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && newSubtask.trim() !== '') {
+            e.preventDefault();
+            await addSubtask(panel.item.id, newSubtask.trim());
+            setNewSubtask('');
+        }
     };
 
     return (
@@ -164,69 +175,68 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                     <label className={`block font-bold uppercase tracking-wider mb-2 ${panel.mode === 'add' || activeField === 'assignedUsersIds' ? 'text-[10px] text-purple-600' : 'text-[10px] text-gray-400'}`}>Assignees</label>
                                     
                                     {panel.mode === 'add' ? (
-                                        <div className="outline-none">
-                                            {/* Prostokątny panel pokazujący aktywne wybory */}
-                                            <div className="bg-purple-50 border-2 border-purple-400 p-3 shadow-sm mb-3 flex items-center gap-2" 
-                                                style={{ 
-                                                    borderRadius: DETAILS_FIELD_RADIUS, 
-                                                    minHeight: '56px',
-                                                    paddingLeft:"14px"
-                                                }}
-                                            >
+                                        <div 
+                                            className={`group relative bg-white border-2 border-gray-100 rounded-[10px] p-3 shadow-sm transition-colors hover:border-purple-200 ${isAssigneeDragOver ? 'ring-4 ring-blue-500 bg-blue-50 border-blue-500' : ''}`}
+                                            onDragOver={(e) => { e.preventDefault(); }}
+                                            onDragEnter={(e) => { e.preventDefault(); setIsAssigneeDragOver(true); }}
+                                            onDragLeave={(e) => { e.preventDefault(); setIsAssigneeDragOver(false); }}
+                                            onDrop={(e) => {
+                                                e.preventDefault(); setIsAssigneeDragOver(false);
+                                                const userIdStr = e.dataTransfer.getData('text/plain');
+                                                if (!userIdStr) return;
+                                                const userId = parseInt(userIdStr, 10);
+                                                if (!isNaN(userId) && !formData.assignedUsersIds.includes(userId)) {
+                                                    setFormData({...formData, assignedUsersIds: [...formData.assignedUsersIds, userId]});
+                                                }
+                                            }}
+                                        >
+                                            <div className="flex flex-wrap items-center gap-2">
                                                 {formData.assignedUsersIds && formData.assignedUsersIds.length > 0 ? (
                                                     <div className="flex -space-x-1.5 pl-1">
                                                         {formData.assignedUsersIds.map((id: number, idx: number) => {
                                                             const u = users.find((user: any) => user.id === id);
                                                             if (!u) return null;
                                                             return (
-                                                                <div key={u.id} className="w-7 h-7 rounded-full bg-indigo-500 border-[1.5px] border-white flex items-center justify-center text-white text-[9px] font-bold shadow-sm" style={{ zIndex: 100 - idx }} title={u.fullName}>
-                                                                    {u.fullName.substring(0,2).toUpperCase()}
+                                                                <div key={u.id} className="relative group/avatar cursor-pointer" title={u.fullName}>
+                                                                    <div className="w-7 h-7 rounded-full bg-indigo-500 border-[1.5px] border-white flex items-center justify-center text-white text-[9px] font-bold shadow-sm transition-transform group-hover/avatar:scale-110" style={{ zIndex: 100 - idx }}>
+                                                                        {u.fullName.substring(0,2).toUpperCase()}
+                                                                    </div>
+                                                                    <div className="absolute inset-0 bg-red-500/90 rounded-full opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity text-white z-[101]" onClick={() => setFormData({...formData, assignedUsersIds: formData.assignedUsersIds.filter((uid: number) => uid !== u.id)})} title={`Remove ${u.fullName}`}>
+                                                                        <X size={12} strokeWidth={3} />
+                                                                    </div>
                                                                 </div>
                                                             );
                                                         })}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-xs font-medium text-purple-400 italic">Unassigned</span>
+                                                    <span className="text-xs font-medium text-gray-400 italic">Unassigned</span>
                                                 )}
-                                            </div>
-                                            
-                                            {/* Lista wszystkich użytkowników do wyboru */}
-                                            <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1">
-                                                {users.map(u => {
-                                                    const isSelected = formData.assignedUsersIds && formData.assignedUsersIds.includes(u.id);
-                                                    return (
-                                                        <div
-                                                            key={u.id}
-                                                            onClick={() => setFormData({...formData, assignedUsersIds: isSelected ? formData.assignedUsersIds.filter((x: number) => x !== u.id) : [...formData.assignedUsersIds, u.id]})}
-                                                            className="flex items-center gap-3 p-2 border-2 border-transparent bg-white hover:border-purple-200 cursor-pointer transition-colors"
-                                                            style={{
-                                                                padding:10,
-                                                                borderRadius: DETAILS_FIELD_RADIUS
-                                                            }}
-                                                        >
-                                                            <div className="w-8 h-8 rounded-full bg-indigo-500 border-[1.5px] border-white flex items-center justify-center text-white text-[10px] font-bold shadow-sm">
-                                                                {u.fullName.substring(0,2).toUpperCase()}
-                                                            </div>
-                                                            <span className="text-xs font-bold text-gray-800">{u.fullName}</span>
-                                                            
-                                                            {isSelected && <div className="ml-auto w-3 h-3 rounded-full bg-purple-500 mr-0 shadow-sm"></div>}
-                                                        </div>
-                                                    );
-                                                })}
+                                                
+                                                <div className="relative ml-1">
+                                                    <button className="w-7 h-7 rounded-full bg-white border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-purple-500 hover:text-purple-600 hover:bg-purple-50 transition-colors shadow-sm cursor-pointer outline-none focus:outline-none">
+                                                        <Plus size={14} strokeWidth={3}/>
+                                                    </button>
+                                                    <select
+                                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                                        value="" title="Add assignee"
+                                                        onChange={(e) => { 
+                                                            const val = parseInt(e.target.value); 
+                                                            if (!isNaN(val) && !formData.assignedUsersIds.includes(val)) {
+                                                                setFormData({...formData, assignedUsersIds: [...formData.assignedUsersIds, val]});
+                                                            }
+                                                        }}
+                                                    >
+                                                        <option value="" disabled>Add user...</option>
+                                                        {users.filter(u => !formData.assignedUsersIds.includes(u.id)).map(u => (
+                                                            <option key={u.id} value={u.id}>{u.fullName}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
                                             </div>
                                         </div>
                                     ) : activeField === 'assignedUsersIds' ? (
-                                        <div 
-                                            tabIndex={0} ref={el => el?.focus()} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) cancelEdit(); }} onKeyDown={handleKeyDownDefault} className="outline-none"
-                                            >
-                                            {/* Prostokątny panel pokazujący aktywne wybory */}
-                                            <div className="bg-purple-50 border-2 border-purple-400 p-3 shadow-sm mb-3 flex items-center gap-2" 
-                                                style={{ 
-                                                    borderRadius: DETAILS_FIELD_RADIUS, 
-                                                    minHeight: '56px',
-                                                    paddingLeft:"14px"
-                                                }}
-                                            >
+                                        <div tabIndex={0} ref={el => el?.focus()} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) cancelEdit(); }} onKeyDown={handleKeyDownDefault} className="outline-none">
+                                            <div className="bg-purple-50 border-2 border-purple-400 p-3 shadow-sm mb-3 flex items-center gap-2" style={{ borderRadius: DETAILS_FIELD_RADIUS, minHeight: '56px', paddingLeft:"14px" }}>
                                                 {editValue && editValue.length > 0 ? (
                                                     <div className="flex -space-x-1.5 pl-1">
                                                         {editValue.map((id: number, idx: number) => {
@@ -242,28 +252,17 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                                 ) : (
                                                     <span className="text-xs font-medium text-purple-400 italic">Unassigned</span>
                                                 )}
+                                                <div className="relative ml-1">
+                                                    <div className="w-7 h-7 rounded-full bg-white border-2 border-dashed border-purple-300 flex items-center justify-center text-purple-500 shadow-sm"><Plus size={14} strokeWidth={3}/></div>
+                                                </div>
                                             </div>
-                                            
-                                            {/* Lista wszystkich użytkowników do wyboru */}
-                                            <div 
-                                                className="flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1">
+                                            <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1">
                                                 {users.map(u => {
                                                     const isSelected = editValue && editValue.includes(u.id);
                                                     return (
-                                                        <div
-                                                            key={u.id}
-                                                            onClick={() => setEditValue((prev: number[]) => isSelected ? prev.filter(x => x !== u.id) : [...prev, u.id])}
-                                                            className="flex items-center gap-3 p-2 border-2 border-transparent bg-white hover:border-purple-200 cursor-pointer transition-colors"
-                                                            style={{
-                                                                padding:10,
-                                                                borderRadius: DETAILS_FIELD_RADIUS
-                                                            }}
-                                                        >
-                                                            <div className="w-8 h-8 rounded-full bg-indigo-500 border-[1.5px] border-white flex items-center justify-center text-white text-[10px] font-bold shadow-sm">
-                                                                {u.fullName.substring(0,2).toUpperCase()}
-                                                            </div>
+                                                        <div key={u.id} onClick={() => setEditValue((prev: number[]) => isSelected ? prev.filter(x => x !== u.id) : [...prev, u.id])} className="flex items-center gap-3 p-2 border-2 border-transparent bg-white hover:border-purple-200 cursor-pointer transition-colors" style={{ padding:10, borderRadius: DETAILS_FIELD_RADIUS }}>
+                                                            <div className="w-8 h-8 rounded-full bg-indigo-500 border-[1.5px] border-white flex items-center justify-center text-white text-[10px] font-bold shadow-sm">{u.fullName.substring(0,2).toUpperCase()}</div>
                                                             <span className="text-xs font-bold text-gray-800">{u.fullName}</span>
-                                                            
                                                             {isSelected && <div className="ml-auto w-3 h-3 rounded-full bg-purple-500 mr-0 shadow-sm"></div>}
                                                         </div>
                                                     );
@@ -272,41 +271,29 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                             <div className="text-[9px] text-purple-600 mt-2 font-bold">Select users and click <kbd className="bg-purple-100 px-1 py-0.5 rounded border border-purple-200">Save</kbd> or <kbd className="bg-purple-100 px-1 py-0.5 rounded border border-purple-200">Esc</kbd> to discard</div>
                                         </div>
                                     ) : (
-                                        <div 
-                                            className="group relative flex items-center bg-white border-2 border-gray-100 hover:border-purple-200 shadow-sm cursor-pointer transition-colors p-3"
-                                            style={{ borderRadius: DETAILS_FIELD_RADIUS, minHeight: '56px' }}
-                                            onDoubleClick={() => startEdit('assignedUsersIds', panel.item?.assignedUsers?.map((u: any) => u.id) || [])}
-                                            onMouseEnter={() => dispatchHover('Task Assignees', 'Double click to edit assignees')}
-                                            onMouseLeave={() => dispatchHover(null)}
-                                        >
-                                            <div 
-                                                className="flex flex-wrap items-center gap-2"
-                                                style={{
-                                                    paddingLeft:15
-                                                }}
-                                            >
+                                        <div className="group relative flex items-center bg-white border-2 border-gray-100 hover:border-purple-200 shadow-sm cursor-pointer transition-colors p-3" style={{ borderRadius: DETAILS_FIELD_RADIUS, minHeight: '56px' }} onDoubleClick={() => startEdit('assignedUsersIds', panel.item?.assignedUsers?.map((u: any) => u.id) || [])} onMouseEnter={() => dispatchHover('Task Assignees', 'Double click to edit assignees')} onMouseLeave={() => dispatchHover(null)}>
+                                            <div className="flex flex-wrap items-center gap-2" style={{ paddingLeft:15 }}>
                                                 {panel.item?.assignedUsers && panel.item.assignedUsers.length > 0 ? (
                                                     <div className="flex -space-x-1.5 pl-1">
                                                         {panel.item.assignedUsers.map((u: any, idx: number) => (
-                                                            <div key={u.id} className="w-7 h-7 rounded-full bg-indigo-500 border-[1.5px] border-white flex items-center justify-center text-white text-[9px] font-bold shadow-sm" style={{ zIndex: 100 - idx }} title={u.fullName}>
-                                                                {u.fullName.substring(0,2).toUpperCase()}
-                                                            </div>
+                                                            <div key={u.id} className="w-7 h-7 rounded-full bg-indigo-500 border-[1.5px] border-white flex items-center justify-center text-white text-[9px] font-bold shadow-sm" style={{ zIndex: 100 - idx }} title={u.fullName}>{u.fullName.substring(0,2).toUpperCase()}</div>
                                                         ))}
                                                     </div>
                                                 ) : (
                                                     <span className="text-xs font-medium text-gray-400 italic">Unassigned</span>
                                                 )}
+                                                <div className="relative ml-1">
+                                                    <div className="w-7 h-7 rounded-full bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 shadow-sm transition-colors group-hover:border-purple-400 group-hover:text-purple-500"><Plus size={14} strokeWidth={3}/></div>
+                                                </div>
                                             </div>
-                                            <div className="absolute bottom-1 right-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
-                                                <span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span>
-                                            </div>
+                                            <div className="absolute bottom-1 right-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10"><span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span></div>
                                         </div>
                                     )}
                                 </div>
                             )}
 
                             {panel.type === 'task' && (
-                                <div className="flex-1 flex flex-col min-h-[150px]">
+                                <div className="flex-1 flex flex-col min-h-[120px]">
                                     <label className={`block font-bold uppercase tracking-wider mb-2 ${panel.mode === 'add' || activeField === 'content' ? 'text-[10px] text-purple-600' : 'text-[10px] text-gray-400'}`}>Description</label>
                                     {panel.mode === 'add' ? (
                                         <textarea className="w-full flex-1 text-sm py-4 border-2 border-gray-200 bg-white focus:outline-none focus:ring-4 focus:ring-purple-500/10 transition-all resize-none shadow-sm" style={{ borderRadius: DETAILS_FIELD_RADIUS, paddingLeft: '10px', paddingRight: '14px', paddingTop: '7px' }} value={formData.content} onChange={(e) => setFormData({...formData, content: e.target.value})} placeholder="Add details, steps, notes..." />
@@ -321,6 +308,47 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                             <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10"><span className="text-[10px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm select-none">Double click to edit</span></div>
                                         </div>
                                     )}
+                                </div>
+                            )}
+
+                            {panel.type === 'task' && panel.mode === 'view' && (
+                                <div className="flex flex-col gap-2 mt-2 border-t border-gray-200 pt-6">
+                                    <label className="block font-bold uppercase tracking-wider mb-2 text-[10px] text-gray-400">Subtasks</label>
+                                    <div className="flex flex-col gap-1.5">
+                                        {panel.item?.subtasks?.map((subtask: any) => (
+                                            <div key={subtask.id} className="group flex items-center gap-3 bg-white border border-gray-100 p-2 shadow-sm transition-colors hover:border-purple-200" style={{ borderRadius: DETAILS_FIELD_RADIUS }}>
+                                                <button 
+                                                    onClick={() => updateSubtask(subtask.id, { isDone: !subtask.isDone })}
+                                                    className={`w-5 h-5 flex-shrink-0 rounded flex items-center justify-center border transition-colors ${subtask.isDone ? 'bg-purple-500 border-purple-500 text-white' : 'bg-gray-50 border-gray-300 text-transparent hover:border-purple-400'}`}
+                                                >
+                                                    <Check size={12} strokeWidth={3} />
+                                                </button>
+                                                <span className={`text-sm flex-1 break-words ${subtask.isDone ? 'text-gray-400 line-through' : 'text-gray-700 font-medium'}`}>
+                                                    {subtask.title}
+                                                </span>
+                                                <button 
+                                                    onClick={() => removeSubtask(subtask.id)}
+                                                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all focus:outline-none p-1"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            </div>
+                                        ))}
+
+                                        <div className="flex items-center gap-3 bg-gray-50 border border-dashed border-gray-300 p-2 transition-colors focus-within:border-purple-400 focus-within:bg-white" style={{ borderRadius: DETAILS_FIELD_RADIUS }}>
+                                            <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center text-gray-400">
+                                                <Plus size={16} strokeWidth={2.5}/>
+                                            </div>
+                                            <input 
+                                                type="text" 
+                                                placeholder="Add new subtask... (press Enter)"
+                                                value={newSubtask}
+                                                onChange={(e) => setNewSubtask(e.target.value)}
+                                                onKeyDown={handleAddSubtask}
+                                                className="flex-1 bg-transparent text-sm text-gray-700 outline-none font-medium placeholder-gray-400"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 

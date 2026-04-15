@@ -1,18 +1,22 @@
 import { create } from 'zustand';
 import client from '../api/client';
 
+export interface KanbanItemSubTask {
+    id: number;
+    itemId: number;
+    title: string;
+    content: string;
+    isDone: boolean;
+}
+
 export interface KanbanItem {
   id: number;
   content: string;
   order: number;
   columnId: number;
   rowId: number | null;
-  assignedToId: number | null;
-  assignedTo?: {
-      id: number;
-      fullName: string;
-      email: string;
-  };
+  assignedUsers?: { id: number, fullName: string, email: string }[];
+  subtasks?: KanbanItemSubTask[]; // <-- DODANO SUBTASKI DO MODELU
   color?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -52,12 +56,15 @@ interface KanbanState {
   removeRow: (id: number, action?: 'delete_tasks' | 'move_tasks', targetRowId?: number | null) => Promise<void>;
   reorderRows: (startIndex: number, endIndex: number) => Promise<void>;
 
-  // FIX: Używamy obiektu, aby nazwy zmiennych się nie pomieszały!
-  addItem: (data: { columnId: number, rowId: number | null, title: string, content: string, color?: string, assignedToId?: number | null }) => Promise<void>;
-  updateItem: (itemId: number, data: Partial<KanbanItem>) => Promise<void>;
+  addItem: (data: { columnId: number, rowId: number | null, title: string, content: string, color?: string, assignedUsersIds?: number[] }) => Promise<void>;
+  updateItem: (itemId: number, data: Partial<KanbanItem> & { assignedUsersIds?: number[] }) => Promise<void>;
   removeItem: (itemId: number) => Promise<void>;
-  
   moveItem: (itemId: number, targetColumnId: number, targetRowId: number | null) => Promise<void>; 
+
+  // AKCJE DLA SUBTASKÓW
+  addSubtask: (itemId: number, title: string) => Promise<void>;
+  updateSubtask: (subtaskId: number, data: Partial<KanbanItemSubTask>) => Promise<void>;
+  removeSubtask: (subtaskId: number) => Promise<void>;
 }
 
 export const useKanbanStore = create<KanbanState>((set, get) => ({
@@ -133,12 +140,8 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     } catch(e) { console.error(e); get().fetchBoard(); }
   },
 
-  // FIX: Odbieramy obiekt wysłany z KanbanBoard
   addItem: async (data) => {
-    try { 
-        await client.post('/kanban/items', data); 
-        get().fetchBoard(); 
-    } catch (e) { console.error(e); }
+    try { await client.post('/kanban/items', data); get().fetchBoard(); } catch (e) { console.error(e); }
   },
 
   updateItem: async (id, data) => {
@@ -170,5 +173,18 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
           await client.patch(`/kanban/items/${itemId}`, { columnId: targetColumnId, rowId: targetRowId });
           get().fetchBoard(); 
       } catch (e) { console.error("Move error:", e); get().fetchBoard(); }
+  },
+
+  // NOWE FUNKCJE SUBTASKÓW
+  addSubtask: async (itemId, title) => {
+      try { await client.post('/kanban/subtasks', { itemId, title, content: 'none' }); get().fetchBoard(); } catch (e) { console.error(e); }
+  },
+
+  updateSubtask: async (subtaskId, data) => {
+      try { await client.patch(`/kanban/subtasks/${subtaskId}`, data); get().fetchBoard(); } catch (e) { console.error(e); }
+  },
+
+  removeSubtask: async (subtaskId) => {
+      try { await client.delete(`/kanban/subtasks/${subtaskId}`); get().fetchBoard(); } catch (e) { console.error(e); }
   }
 }));

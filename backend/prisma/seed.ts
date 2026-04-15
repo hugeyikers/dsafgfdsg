@@ -110,7 +110,9 @@ async function main() {
                  title: 'Skonfigurować projekt',
                  content: 'Zainstalować zależności i przygotować .env',
                  order: 0,
-                 assignedToId: admin.id,
+                 assignedUsers: {
+                    connect: [{ id: admin.id }] 
+                 },
                  rowId: standardRow?.id,
                  subtasks: {
                       create: [

@@ -3,16 +3,17 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateColumnDto } from './dto/create-column.dto';
 import { CreateRowDto } from './dto/create-row.dto';
 import { CreateItemDto } from './dto/create-item.dto';
+import { CreateSubtaskDto } from './dto/create-subtask.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { UpdateColumnDto } from './dto/update-column.dto';
 import { UpdateRowDto } from './dto/update-row.dto';
+import { UpdateSubtaskDto } from './dto/update-subtask.dto';
 
 @Injectable()
 export class KanbanService implements OnModuleInit {
   constructor(private prisma: PrismaService) {}
 
   async onModuleInit() {
-    // Check if columns exist, if not create default 3
     const count = await this.prisma.kanbanColumn.count();
     if (count === 0) {
       await this.prisma.kanbanColumn.createMany({
@@ -30,7 +31,8 @@ export class KanbanService implements OnModuleInit {
       include: {
         items: {
           orderBy: { order: 'asc' },
-          include: { assignedUsers: true },
+          // DODANO POBIERANIE SUBTASKÓW
+          include: { assignedUsers: true, subtasks: { orderBy: { id: 'asc' } } },
         },
       },
       orderBy: { order: 'asc' },
@@ -99,35 +101,35 @@ export class KanbanService implements OnModuleInit {
         rowId: dto.rowId || null,
         order,
         color: dto.color || null,
-        // Użyj 'connect' aby powiązać tablicę ID z użytkownikami
         assignedUsers: {
             connect: dto.assignedUsersIds?.map(id => ({ id })) || []
         }
       },
-      include: { assignedUsers: true },
+      // DODANO ZWRACANIE SUBTASKÓW
+      include: { assignedUsers: true, subtasks: true },
     });
   }
 
   async createSubtask(dto: CreateSubtaskDto) {
-    return this.prisma.kanbanSubtask.create({
+    return this.prisma.kanbanItemSubTask.create({
       data: {
         title: dto.title,
-        content: dto.content,
+        content: dto.content || 'none', // Fallback for content
         itemId: dto.itemId,
-        isDone: dto.isDone,
+        isDone: dto.isDone || false,
       },
     });
   }
 
   async updateSubtask(id: number, dto: UpdateSubtaskDto) {
-    return this.prisma.kanbanSubtask.update({
+    return this.prisma.kanbanItemSubTask.update({
       where: { id },
       data: dto,
     });
   }
 
   async removeSubtask(id: number) {
-    return this.prisma.kanbanSubtask.delete({ where: { id } });
+    return this.prisma.kanbanItemSubTask.delete({ where: { id } });
   }
 
   async updateItem(id: number, dto: UpdateItemDto) {
@@ -144,19 +146,18 @@ export class KanbanService implements OnModuleInit {
       return this.prisma.kanbanItem.update({
           where: { id },
           data: updateData,
-          include: { assignedUsers: true }
+          // DODANO ZWRACANIE SUBTASKÓW
+          include: { assignedUsers: true, subtasks: { orderBy: { id: 'asc' } } }
       });
   }
 
   async moveBatch(itemIds: number[], targetColumnId: number) {
-      // Get max order in target
       const maxOrder = await this.prisma.kanbanItem.findFirst({
           where: { columnId: targetColumnId },
           orderBy: { order: 'desc' }
       });
       let nextOrder = maxOrder ? maxOrder.order + 1 : 0;
 
-      // Update calls
       const updates = itemIds.map(id => {
           const update = this.prisma.kanbanItem.update({
               where: { id },

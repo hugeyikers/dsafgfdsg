@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { useKanbanStore, KanbanItem, KanbanColumn, KanbanRow } from '../../../store/useKanbanStore';
+import { ListTodo } from 'lucide-react'; // IKONA SUBTASKÓW
 
 interface TaskProps {
     item: KanbanItem;
@@ -31,13 +32,17 @@ const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClic
         const userId = parseInt(userIdStr, 10);
         if (isNaN(userId)) return;
 
-        const currentUserIds = item.assignedUsers?.map(u => u.id) || [];
+        const currentUserIds = item.assignedUsers?.map((u: any) => u.id) || [];
         if (currentUserIds.includes(userId)) return;
 
-        const userTaskCount = columns.flatMap(c => c.items).filter(i => i.assignedUsers?.some(u => u.id === userId)).length;
+        const userTaskCount = columns.flatMap(c => c.items).filter(i => i.assignedUsers?.some((u: any) => u.id === userId)).length;
         if (userTaskCount >= 5) { alert(`USER LIMIT EXCEEDED!\n\nA maximum of 5 tasks per user is allowed.`); return; }
         updateItem(item.id, { assignedUsersIds: [...currentUserIds, userId] });
     };
+
+    const totalSubtasks = item.subtasks?.length || 0;
+    const completedSubtasks = item.subtasks?.filter(s => s.isDone).length || 0;
+    const isAllDone = totalSubtasks > 0 && completedSubtasks === totalSubtasks;
 
     return (
         <Draggable draggableId={`item-${item.id}`} index={index}>
@@ -55,8 +60,7 @@ const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClic
                     style={{ 
                         ...provided.draggableProps.style, 
                         backgroundColor: isNativeDragOver ? '#eff6ff' : (isEdited ? '#eff6ff' : (item.color || '#ffffff')),
-                        zIndex: snapshot.isDragging ? 9999 : (isEdited ? 30 : undefined),
-                        padding:10
+                        zIndex: snapshot.isDragging ? 9999 : (isEdited ? 30 : undefined)
                     }}
                 >
                     <div className="flex-1 w-full text-left mb-3 relative z-20">
@@ -65,15 +69,21 @@ const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClic
                         </p>
                     </div>
 
-                    {/* przypisani użytkownicy - prawy dolny róg */}
-                    <div
-                        style={{
-                            padding:3,
-                        }} 
-                        className="w-full flex justify-end mt-auto select-none pointer-events-none relative z-20">
+                    <div className="w-full flex justify-between items-end mt-auto select-none pointer-events-none relative z-20">
+                        {/* Wskaźnik subtasków po lewej (jeśli są) */}
+                        {totalSubtasks > 0 ? (
+                            <div className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold ${isAllDone ? 'bg-green-100 text-green-700' : 'bg-black/5 text-gray-500'}`}>
+                                <ListTodo size={12} strokeWidth={2.5}/>
+                                <span>{completedSubtasks}/{totalSubtasks}</span>
+                            </div>
+                        ) : (
+                            <div />
+                        )}
+
+                        {/* Ikonki użytkowników po prawej */}
                         {item.assignedUsers && item.assignedUsers.length > 0 ? (
                             <div className="flex -space-x-1.5 overflow-hidden">
-                                {item.assignedUsers.map((user, idx) => (
+                                {item.assignedUsers.map((user: any, idx: number) => (
                                     <div 
                                         key={user.id}
                                         className="w-6 h-6 rounded-full bg-indigo-500 border-[1.5px] border-white flex items-center justify-center text-white text-[9px] font-bold shadow-sm"
@@ -89,14 +99,8 @@ const Task: React.FC<TaskProps> = ({ item, index, columns, onClick, onDoubleClic
                         )}
                     </div>
 
-                    <div
-                        style={{
-                            paddingTop:5
-                        }} 
-                        className="flex justify-center bottom-2 text-right opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 pl-8">
-                        <span 
-                            style={{ padding: 2 }} 
-                            className="text-[9px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full backdrop-blur-sm border border-gray-100 shadow-sm">
+                    <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 pl-8">
+                        <span style={{ padding: 2 }} className="text-[8px] italic text-gray-500 bg-white/80 px-2 py-0.5 rounded-full backdrop-blur-sm border border-gray-100 shadow-sm">
                             Double click to view details
                         </span>
                     </div>

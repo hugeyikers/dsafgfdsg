@@ -155,7 +155,7 @@ const UserManagement = () => {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {users.map((user) => {
-                const taskCount = columns.flatMap(c => c.items).filter(i => i.assignedToId === user.id).length;
+                const taskCount = columns.flatMap(c => c.items).filter(i => i.assignedUsers.co === user.id).length;
                 const isOverLimit = taskCount >= maxTasksPerUser;
 
                 return (

@@ -3,9 +3,11 @@ import { KanbanService } from './kanban.service';
 import { CreateColumnDto } from './dto/create-column.dto';
 import { CreateRowDto } from './dto/create-row.dto';
 import { CreateItemDto } from './dto/create-item.dto';
+import { CreateSubtaskDto } from './dto/create-subtask.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { UpdateColumnDto } from './dto/update-column.dto';
 import { UpdateRowDto } from './dto/update-row.dto';
+import { UpdateSubtaskDto } from './dto/update-subtask.dto';
 
 @Controller('kanban')
 export class KanbanController {
