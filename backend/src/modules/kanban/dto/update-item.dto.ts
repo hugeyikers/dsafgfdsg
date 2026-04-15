@@ -1,4 +1,4 @@
-import { IsInt, IsNumber, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, ValidateIf, IsArray } from 'class-validator';
 
 export class UpdateItemDto {
     @IsString()
@@ -15,7 +15,6 @@ export class UpdateItemDto {
     @IsOptional()
     columnId?: number | null;
 
-    // TUTAJ BYŁ BŁĄD! Brakowało ValidateIf dla null.
     @ValidateIf((object, value) => value !== null)
     @IsInt()
     @IsOptional()
@@ -27,9 +26,10 @@ export class UpdateItemDto {
     order?: number;
 
     @ValidateIf((object, value) => value !== null)
-    @IsInt()
+    @IsArray()
+    @IsInt({ each: true })
     @IsOptional()
-    assignedToId?: number | null;
+    assignedUsersIds?: number[];
 
     @IsString()
     @IsOptional()

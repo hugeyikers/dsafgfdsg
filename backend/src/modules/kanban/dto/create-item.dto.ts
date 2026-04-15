@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsNumber, IsString, IsOptional, ValidateIf } from 'class-validator';
+import { IsInt, IsNotEmpty, IsNumber, IsString, IsOptional, ValidateIf, IsArray } from 'class-validator';
 
 export class CreateItemDto {
   @IsString()
@@ -19,10 +19,10 @@ export class CreateItemDto {
   rowId?: number | null;
 
   @ValidateIf((object, value) => value !== null)
-  @IsNumber()
-  @IsInt()
+  @IsArray()
+  @IsInt({ each: true })
   @IsOptional()
-  assignedToId?: number | null;
+  assignedUsersIds?: number[];
 
   @IsString()
   @IsOptional()
