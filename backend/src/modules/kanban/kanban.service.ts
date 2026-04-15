@@ -108,6 +108,28 @@ export class KanbanService implements OnModuleInit {
     });
   }
 
+  async createSubtask(dto: CreateSubtaskDto) {
+    return this.prisma.kanbanSubtask.create({
+      data: {
+        title: dto.title,
+        content: dto.content,
+        itemId: dto.itemId,
+        isDone: dto.isDone,
+      },
+    });
+  }
+
+  async updateSubtask(id: number, dto: UpdateSubtaskDto) {
+    return this.prisma.kanbanSubtask.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async removeSubtask(id: number) {
+    return this.prisma.kanbanSubtask.delete({ where: { id } });
+  }
+
   async updateItem(id: number, dto: UpdateItemDto) {
       const { assignedUsersIds, ...restDto } = dto;
       

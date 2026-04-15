@@ -66,6 +66,21 @@ export class KanbanController {
     return this.kanbanService.removeItem(id);
   }
 
+  @Post('subtasks')
+  createSubtask(@Body() createSubtaskDto: CreateSubtaskDto) {
+    return this.kanbanService.createSubtask(createSubtaskDto);
+  }
+
+  @Patch('subtasks/:id')
+  updateSubtask(@Param('id', ParseIntPipe) id: number, @Body() updateSubtaskDto: UpdateSubtaskDto) {
+    return this.kanbanService.updateSubtask(id, updateSubtaskDto);
+  }
+
+  @Delete('subtasks/:id')
+  removeSubtask(@Param('id', ParseIntPipe) id: number) {
+    return this.kanbanService.removeSubtask(id);
+  }
+
   @Patch('columns/reorder')
   reorderColumns(@Body() body: { columnIds: number[] }) {
     return this.kanbanService.reorderColumns(body.columnIds);

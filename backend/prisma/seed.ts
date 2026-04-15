@@ -101,7 +101,7 @@ async function main() {
     // Create columns sequentially to ensure order
     const colTodo = await prisma.kanbanColumn.create({
       data: {
-        title: 'Do zrobienia',
+        title: 'Backlog',
         order: 0,
         limit: 10,
         items: {
@@ -110,10 +110,16 @@ async function main() {
                  title: 'Skonfigurować projekt',
                  content: 'Zainstalować zależności i przygotować .env',
                  order: 0,
-                 assignedUsers: {
-                    connect: [{ id: admin.id }] 
-                 },
-                 rowId: standardRow?.id
+                 assignedToId: admin.id,
+                 rowId: standardRow?.id,
+                 subtasks: {
+                      create: [
+                        {
+                          title: 'zainstalować zależności',
+                          content: 'npm run install:all'
+                        }
+                      ]
+                 }
              },
              { 
                  title: 'Sprawdzić logowanie i rejestrację',
