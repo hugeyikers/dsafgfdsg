@@ -11,12 +11,13 @@ export interface KanbanItemSubTask {
 
 export interface KanbanItem {
   id: number;
+  title: string;
   content: string;
   order: number;
   columnId: number;
   rowId: number | null;
   assignedUsers?: { id: number, fullName: string, email: string }[];
-  subtasks?: KanbanItemSubTask[]; // <-- DODANO SUBTASKI DO MODELU
+  subtasks?: KanbanItemSubTask[];
   color?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -59,9 +60,8 @@ interface KanbanState {
   addItem: (data: { columnId: number, rowId: number | null, title: string, content: string, color?: string, assignedUsersIds?: number[] }) => Promise<void>;
   updateItem: (itemId: number, data: Partial<KanbanItem> & { assignedUsersIds?: number[] }) => Promise<void>;
   removeItem: (itemId: number) => Promise<void>;
-  moveItem: (itemId: number, targetColumnId: number, targetRowId: number | null) => Promise<void>; 
+  moveItem: (itemId: number, targetColumnId: number, targetRowId: number | null, targetIndex?: number) => Promise<void>; 
 
-  // AKCJE DLA SUBTASKÓW
   addSubtask: (itemId: number, title: string) => Promise<void>;
   updateSubtask: (subtaskId: number, data: Partial<KanbanItemSubTask>) => Promise<void>;
   removeSubtask: (subtaskId: number) => Promise<void>;
@@ -152,30 +152,82 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
     try { await client.delete(`/kanban/items/${id}`); get().fetchBoard(); } catch (e) { console.error(e); }
   },
 
-  moveItem: async (itemId, targetColumnId, targetRowId) => {
+  moveItem: async (itemId, targetColumnId, targetRowId, targetIndex) => {
+      let cellItemsToUpdate: any[] = [];
+
       set(state => {
+          // WAŻNE: Głębokie klonowanie gwarantuje, że React zobaczy absolutnie każdą zmianę stanu
+          // dzięki temu pozbywamy się "flickeringu" (wpadania z góry) z biblioteki DND
+          const newColumns = state.columns.map(col => ({
+              ...col,
+              items: col.items.map(item => ({ ...item }))
+          }));
+
           let movedItem: any = null;
-          const newColumns = state.columns.map(col => {
-              const itemToMove = col.items.find(i => i.id === itemId);
-              if (itemToMove) {
-                  movedItem = { ...itemToMove, columnId: targetColumnId, rowId: targetRowId };
-                  return { ...col, items: col.items.filter(i => i.id !== itemId) };
+
+          // 1. Znajdź i usuń item ze źródła
+          for (let i = 0; i < newColumns.length; i++) {
+              const idx = newColumns[i].items.findIndex(it => it.id === itemId);
+              if (idx !== -1) {
+                  movedItem = { ...newColumns[i].items[idx], columnId: targetColumnId, rowId: targetRowId };
+                  newColumns[i].items.splice(idx, 1);
+                  break;
               }
-              return col;
-          });
+          }
+
           if (movedItem) {
-              return { columns: newColumns.map(col => col.id === targetColumnId ? { ...col, items: [...col.items, movedItem] } : col ) };
+              const targetColIndex = newColumns.findIndex(c => c.id === targetColumnId);
+              if (targetColIndex !== -1) {
+                  const targetItems = newColumns[targetColIndex].items;
+
+                  // 2. Filtruj elementy
+                  const cellItems = targetItems.filter(it => it.rowId === targetRowId);
+                  const otherItems = targetItems.filter(it => it.rowId !== targetRowId);
+
+                  // Uporządkuj elementy zanim wykonasz splice
+                  cellItems.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+                  // 3. Wstaw element w nowe miejsce (np. z dołu na górę)
+                  if (targetIndex !== undefined && targetIndex !== null) {
+                      cellItems.splice(targetIndex, 0, movedItem);
+                  } else {
+                      cellItems.push(movedItem);
+                  }
+
+                  // 4. Przelicz 'order' przypisując NOWE obiekty, co natychmiastowo synchronizuje stan z Reactem
+                  const updatedCellItems = cellItems.map((item, idx) => ({
+                      ...item,
+                      order: idx
+                  }));
+
+                  cellItemsToUpdate = updatedCellItems; 
+                  newColumns[targetColIndex].items = [...otherItems, ...updatedCellItems];
+              }
+              return { columns: newColumns };
           }
           return state;
       });
 
       try {
-          await client.patch(`/kanban/items/${itemId}`, { columnId: targetColumnId, rowId: targetRowId });
-          get().fetchBoard(); 
-      } catch (e) { console.error("Move error:", e); get().fetchBoard(); }
+          if (cellItemsToUpdate.length > 0) {
+              // Aktualizuj wszystko po kolei na serwerze
+              await Promise.all(cellItemsToUpdate.map(item => {
+                  if (item.id === itemId) {
+                      return client.patch(`/kanban/items/${item.id}`, { 
+                          columnId: targetColumnId, 
+                          rowId: targetRowId, 
+                          order: item.order 
+                      });
+                  }
+                  return client.patch(`/kanban/items/${item.id}`, { order: item.order });
+              }));
+          }
+      } catch (e) { 
+          console.error("Move error:", e); 
+          get().fetchBoard(); // Fallback w razie wyrzucenia błędu po stronie backendu
+      }
   },
 
-  // NOWE FUNKCJE SUBTASKÓW
   addSubtask: async (itemId, title) => {
       try { await client.post('/kanban/subtasks', { itemId, title, content: 'none' }); get().fetchBoard(); } catch (e) { console.error(e); }
   },

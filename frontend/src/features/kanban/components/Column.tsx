@@ -65,8 +65,10 @@ const Column: React.FC<ColumnProps> = ({ column, onDeleteClick }) => {
     };
 
     const isOverLimit = column.limit > 0 && column.items.length > column.limit;
-    const borderColorClass = isOverLimit ? 'border-red-500' : 'border-[#00ff44]';
-    const bgColorClass = isOverLimit ? 'bg-red-50' : 'bg-white';
+    
+    // Zmienne dynamiczne! border-[var(...)]
+    const borderColorClass = isOverLimit ? 'border-[var(--status-error)]' : 'border-[var(--status-ok)]';
+    const bgColorClass = isOverLimit ? 'bg-[var(--status-error)]/10' : 'bg-[var(--bg-card)]';
 
     const handleInputResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setNewItemContent(e.target.value);
@@ -88,13 +90,13 @@ const Column: React.FC<ColumnProps> = ({ column, onDeleteClick }) => {
                     {isEditingCol ? (
                         <input 
                             autoFocus
-                            className="font-medium text-lg text-black text-center outline-none border-b-2 border-gray-400 w-3/4 bg-transparent"
+                            className="font-medium text-lg text-[var(--text-main)] text-center outline-none border-b-2 border-gray-400 w-3/4 bg-transparent"
                             value={tempTitle}
                             onChange={(e) => setTempTitle(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSaveColumn()}
                         />
                     ) : (
-                        <h3 className={`font-medium text-xl transition-colors duration-300 px-6 ${isOverLimit ? 'text-red-700' : 'text-black'}`}>
+                        <h3 className={`font-medium text-xl transition-colors duration-300 px-6 ${isOverLimit ? 'text-[var(--status-error)]' : 'text-[var(--text-main)]'}`}>
                             {column.title}
                         </h3>
                     )}
@@ -103,13 +105,13 @@ const Column: React.FC<ColumnProps> = ({ column, onDeleteClick }) => {
                         <div className="absolute right-3 flex flex-col items-center gap-1">
                             <button 
                                 onClick={() => setIsAdding(!isAdding)}
-                                className={`text-2xl font-light hover:scale-110 transition-transform leading-none ${isOverLimit ? 'text-red-700' : 'text-black'}`}
+                                className={`text-2xl font-light hover:scale-110 transition-transform leading-none ${isOverLimit ? 'text-[var(--status-error)]' : 'text-[var(--text-main)]'}`}
                             >
                                 +
                             </button>
                             <button 
                                 onClick={onDeleteClick}
-                                className={`hover:scale-110 transition-transform ${isOverLimit ? 'text-red-600 hover:text-red-800' : 'text-gray-400 hover:text-red-500'}`}
+                                className={`hover:scale-110 transition-transform ${isOverLimit ? 'text-[var(--status-error)] hover:opacity-80' : 'text-[var(--text-muted)] hover:text-[var(--status-error)]'}`}
                             >
                                 <Trash2 size={14} />
                             </button>
@@ -131,7 +133,7 @@ const Column: React.FC<ColumnProps> = ({ column, onDeleteClick }) => {
                                         <textarea 
                                             autoFocus
                                             rows={1}
-                                            className="w-full py-3.5 px-4 border-2 border-gray-400 rounded-[24px] text-center text-sm outline-none bg-white resize-none overflow-hidden leading-normal"
+                                            className="w-full py-3.5 px-4 border-2 border-[var(--border-base)] rounded-[24px] text-center text-sm outline-none bg-[var(--bg-card)] text-[var(--text-main)] resize-none overflow-hidden leading-normal"
                                             placeholder="Nazwa zadania..."
                                             value={newItemContent}
                                             onChange={handleInputResize}
@@ -143,7 +145,7 @@ const Column: React.FC<ColumnProps> = ({ column, onDeleteClick }) => {
                                     </form>
                                 )}
                                 {column.items.map((item, index) => (
-                                    <Task key={item.id} item={item} index={index} />
+                                    <Task key={item.id} item={item} index={index} columns={columns} rows={[]} onClick={()=>{}} onDoubleClick={()=>{}} />
                                 ))}
                                 {provided.placeholder}
                             </div>
@@ -153,27 +155,27 @@ const Column: React.FC<ColumnProps> = ({ column, onDeleteClick }) => {
                 </div>
             </div>
 
-            <div className={`flex items-center gap-2 mt-1 ml-4 text-sm font-medium transition-colors duration-300 ${isOverLimit ? 'text-red-600' : 'text-black'}`}>
+            <div className={`flex items-center gap-2 mt-1 ml-4 text-sm font-medium transition-colors duration-300 ${isOverLimit ? 'text-[var(--status-error)]' : 'text-[var(--text-main)]'}`}>
                 {isEditingCol ? (
                     <>
                         <span>Max:</span>
                         <input 
                             type="number"
                             min="0"
-                            className="w-12 text-center border-b border-gray-400 outline-none bg-transparent text-black"
+                            className="w-12 text-center border-b border-[var(--border-base)] outline-none bg-transparent text-[var(--text-main)]"
                             value={tempLimit}
                             onChange={(e) => setTempLimit(parseInt(e.target.value) || 0)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSaveColumn()}
                         />
-                        <button onClick={handleSaveColumn} className="text-green-600 hover:scale-110 ml-1"><Check size={16} /></button>
-                        <button onClick={handleCancelEdit} className="text-red-500 hover:scale-110"><X size={16} /></button>
+                        <button onClick={handleSaveColumn} className="text-[var(--status-ok)] hover:scale-110 ml-1"><Check size={16} /></button>
+                        <button onClick={handleCancelEdit} className="text-[var(--status-error)] hover:scale-110"><X size={16} /></button>
                     </>
                 ) : (
                     <>
                         <span>Max: {column.limit === 0 ? '∞' : column.limit}</span>
                         <button 
                             onClick={() => setIsEditingCol(true)}
-                            className={`${isOverLimit ? 'text-red-500 hover:text-red-700' : 'text-gray-600 hover:text-black'} transition-colors`}
+                            className={`${isOverLimit ? 'text-[var(--status-error)] hover:opacity-80' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'} transition-colors`}
                         >
                             <Edit2 size={14} />
                         </button>
@@ -183,21 +185,21 @@ const Column: React.FC<ColumnProps> = ({ column, onDeleteClick }) => {
 
             {showDuplicateWarning && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 backdrop-blur-sm transition-all px-4">
-                    <div className="bg-[#EBEBEB] p-6 rounded-2xl shadow-xl flex flex-col items-center max-w-sm w-full border-2 border-[#d1d5dc] box-border">
-                        <h2 className="text-xl font-bold text-gray-800 mb-2 text-center">Uwaga, duplikat!</h2>
-                        <p className="text-gray-700 text-sm text-center mb-6 font-medium">
+                    <div className="bg-[var(--bg-card)] p-6 rounded-2xl shadow-xl flex flex-col items-center max-w-sm w-full border-2 border-[var(--border-base)] box-border">
+                        <h2 className="text-xl font-bold text-[var(--text-main)] mb-2 text-center">Uwaga, duplikat!</h2>
+                        <p className="text-[var(--text-muted)] text-sm text-center mb-6 font-medium">
                             Zadanie o nazwie <b>"{pendingTaskContent}"</b> już istnieje na tablicy. Czy na pewno chcesz dodać kolejne o takiej samej nazwie?
                         </p>
                         <div className="flex justify-center gap-6 w-full">
                             <button 
                                 onClick={() => executeAdd(pendingTaskContent)} 
-                                className="w-24 py-1.5 rounded-none bg-[#FF6B6B] text-black font-bold hover:bg-[#ff5252] border border-[#FF6B6B] transition-colors text-sm"
+                                className="w-24 py-1.5 rounded-none bg-[var(--status-error)] text-white font-bold hover:opacity-90 border border-transparent transition-colors text-sm"
                             >
                                 Tak
                             </button>
                             <button 
                                 onClick={handleCancelDuplicate} 
-                                className="w-24 py-1.5 rounded-none bg-white text-black font-bold hover:bg-gray-50 border-2 border-[#d1d5dc] transition-colors text-sm"
+                                className="w-24 py-1.5 rounded-none bg-[var(--bg-page)] text-[var(--text-main)] font-bold hover:bg-[var(--border-base)] border-2 border-[var(--border-base)] transition-colors text-sm"
                             >
                                 Nie
                             </button>

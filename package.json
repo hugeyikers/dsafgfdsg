@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-	  "frontend": "cd frontend && npm run dev",
+    "frontend": "cd frontend && npm run dev",
     "backend": "cd backend && npm run start:dev",
-  	"start": "concurrently \"npm run frontend\" \"npm run backend\"",
+    "start": "concurrently \"npm run frontend\" \"npm run backend\"",
     "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend"
   },
   "devDependencies": {

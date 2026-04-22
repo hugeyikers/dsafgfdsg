@@ -35,8 +35,8 @@ const Login = () => {
     <div className="login-container" style={styles.container}>
       <div className="login-box" style={styles.box}>
         <div className="login-logo">
-          <h1 style={{ margin: 0, color: '#2c3e50' }}>CANBAN</h1>
-          <p style={{ margin: '5px 0 20px', color: '#7f8c8d' }}>CANBAN system</p>
+          <h1 style={{ margin: 0, color: '#2c3e50' }}>kanban</h1>
+          <p style={{ margin: '5px 0 20px', color: '#7f8c8d' }}>kanban system</p>
         </div>
 
         {error && (
@@ -52,7 +52,7 @@ const Login = () => {
               type="email" 
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
-              placeholder="e.g. canban@host.com" 
+              placeholder="e.g. kanban@host.com" 
               required 
               className="form-control"
               style={styles.input}

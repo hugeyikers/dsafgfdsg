@@ -25,6 +25,6 @@ async function bootstrap() {
   });
 
   await app.listen(3000, '0.0.0.0');
-  console.log(`Backend CanBan działa na: ${await app.getUrl()}`);
+  console.log(`Backend kanban działa na: ${await app.getUrl()}`);
 }
 bootstrap();

@@ -13,7 +13,7 @@ async function main() {
       port: Number(process.env.DB_PORT) || 3306,
       user: process.env.DB_USER || 'root',
       password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'canban',
+      database: process.env.DB_NAME || 'kanban',
       connectionLimit: 1
   });
   
@@ -28,15 +28,15 @@ async function main() {
   // Simple clean check (optional) or just upsert
   
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@canban.pl' },
+    where: { email: 'admin@kanban.pl' },
     update: {
       fullName: 'Administrator',
       role: Role.ADMINISTRATOR,
       password: hashedPass,
-      email: 'admin@canban.pl'
+      email: 'admin@kanban.pl'
     },
     create: {
-      email: 'admin@canban.pl',
+      email: 'admin@kanban.pl',
       fullName: 'Administrator',
       role: Role.ADMINISTRATOR,
       password: hashedPass,
@@ -44,15 +44,15 @@ async function main() {
   });
 
   const user = await prisma.user.upsert({
-    where: { email: 'user@canban.pl' },
+    where: { email: 'user@kanban.pl' },
     update: {
       fullName: 'Użytkownik Testowy',
       role: Role.USER,
       password: userPass,
-      email: 'user@canban.pl'
+      email: 'user@kanban.pl'
     },
     create: {
-      email: 'user@canban.pl',
+      email: 'user@kanban.pl',
       fullName: 'Użytkownik Testowy',
       role: Role.USER,
       password: userPass,
@@ -60,16 +60,16 @@ async function main() {
   });
 
   const dev = await prisma.user.upsert({
-    where: { email: 'dev@canban.pl' },
+    where: { email: 'dev@kanban.pl' },
     update: {
       fullName: 'Jan Programista',
       role: Role.USER,
       password: userPass,
-      email: 'dev@canban.pl',
+      email: 'dev@kanban.pl',
       limit: 5
     },
     create: {
-      email: 'dev@canban.pl',
+      email: 'dev@kanban.pl',
       fullName: 'Jan Programista',
       role: Role.USER,
       password: userPass,
