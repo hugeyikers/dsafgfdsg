@@ -1,15 +1,14 @@
-import { IsInt, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsInt, IsOptional, IsString, IsBoolean, IsDateString } from 'class-validator';
 
 export class UpdateRowDto {
     @IsString()
     @IsOptional()
     title?: string;
 
-    @IsNumber()
+    @IsInt()
     @IsOptional()
     limit?: number;
 
-    @IsNumber()
     @IsInt()
     @IsOptional()
     order?: number;

@@ -1,5 +1,5 @@
 // backend/prisma/seed.ts
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, Role, Size } from '@prisma/client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import * as bcrypt from 'bcrypt';
 import 'dotenv/config';
@@ -18,6 +18,13 @@ async function main() {
   });
   
   const prisma = new PrismaClient({ adapter });
+
+  const itemDefaults = {
+    color: null as string | null,
+    deadline: null as Date | null,
+    size: Size.M,
+    archived: false,
+  };
 
   console.log('--- Seeding Kanban Database ---');
 
@@ -80,14 +87,28 @@ async function main() {
   console.log('Users seeded:', { admin_email: admin.email, user_email: user.email, dev_email: dev.email });
 
   // Create Kanban Rows if not exist
-  let standardRow = await prisma.kanbanRow.findFirst({ where: { title: 'Standardowe' } });
-  let urgentRow = await prisma.kanbanRow.findFirst({ where: { title: 'Pilne' } });
+  let standardRow = await prisma.kanbanRow.findFirst({ where: { title: 'Standard' } });
+  let urgentRow = await prisma.kanbanRow.findFirst({ where: { title: 'Urgent' } });
 
   const rowsCount = await prisma.kanbanRow.count();
   if (rowsCount === 0) {
     console.log('Seeding Kanban Rows...');
-    standardRow = await prisma.kanbanRow.create({ data: { title: 'Standardowe', order: 0 } });
-    urgentRow = await prisma.kanbanRow.create({ data: { title: 'Pilne', order: 1, limit: 3 } });
+    standardRow = await prisma.kanbanRow.create({
+      data: {
+        title: 'Standard',
+        order: 0,
+        limit: 0,
+        color: null,
+      },
+    });
+    urgentRow = await prisma.kanbanRow.create({
+      data: {
+        title: 'Urgent',
+        order: 1,
+        limit: 3,
+        color: null,
+      },
+    });
     console.log('Kanban rows seeded.');
   } else {
     console.log('Kanban rows already exist. Skipping.');
@@ -99,33 +120,41 @@ async function main() {
     console.log('Seeding Kanban Columns...');
     
     // Create columns sequentially to ensure order
-    const colTodo = await prisma.kanbanColumn.create({
+    await prisma.kanbanColumn.create({
       data: {
         title: 'Backlog',
         order: 0,
-        limit: 10,
+        limit: 0,
         items: {
           create: [
              { 
-                 title: 'Skonfigurować projekt',
-                 content: 'Zainstalować zależności i przygotować .env',
+                 title: 'Frontend | theming',
+                 content: 'Implement theming into application',
+               ...itemDefaults,
                  order: 0,
                  assignedUsers: {
-                    connect: [{ id: admin.id }] 
+                    connect: [{ id: user.id }] 
                  },
                  rowId: standardRow?.id,
                  subtasks: {
                       create: [
                         {
-                          title: 'zainstalować zależności',
-                          content: 'npm run install:all'
+                          title: 'Basic light and dark theme',
+                          content: 'Implement basic light and dark themes, detecting which theme the OS uses.',
+                          isDone: false
+                        },
+                        {
+                         title: 'Custom theme',
+                         content: 'Implement setting custom user-made themes using a color picker tool.',
+                         isDone: false 
                         }
                       ]
                  }
              },
              { 
-                 title: 'Sprawdzić logowanie i rejestrację',
-                 content: 'Przetestować endpointy auth/login i auth/register', 
+                 title: 'Frontend | Multi user assign',
+               content: 'Implement the ability to assign multiple users to tasks.',
+               ...itemDefaults,
                  order: 1,
                  assignedUsers: {
                     connect: [{ id: user.id }] 
@@ -133,29 +162,40 @@ async function main() {
                  rowId: standardRow?.id
              },
              {
-                 title: 'Obsługa błędów',
-                 content: 'Dodać globalny filtr wyjątków',
+                 title: 'Frontend | fix disappearing tasks bug',
+                 content: 'Tasks sometimes get deleted when getting moved.',
+               ...itemDefaults,
                  order: 2,
                  assignedUsers: {
                     connect: [{ id: dev.id }] 
                  },
-                 rowId: urgentRow?.id
+                 rowId: urgentRow?.id,
+                 subtasks: {
+                  create: [
+                    {
+                      title: 'Identified the problem',
+                      content: 'Source of the problem was found.',
+                      isDone: false
+                    }
+                  ]
+                 }
              }
           ]
         }
       }
     });
 
-    const colInProgress = await prisma.kanbanColumn.create({
+    await prisma.kanbanColumn.create({
       data: {
-        title: 'W toku',
+        title: 'In Progress',
         order: 1,
         limit: 5,
         items: {
           create: [
              { 
-                 title: 'Implementacja frontendu (Swimlanes)', 
-                 content: 'Dodać widok wierszy w React',
+                 title: 'Tests',
+                 content: 'Perform e2e testing',
+                 ...itemDefaults,
                  order: 0,
                   assignedUsers: {
                     connect: [{ id: dev.id }] 
@@ -163,50 +203,82 @@ async function main() {
                  rowId: urgentRow?.id
              },
              {
-                 title: 'Testy jednostkowe backendu',
-                 content: 'Napisać testy dla serwisu Kanban',
+                 title: 'Frontend | font size update',
+                 content: 'Increase the font size across the application so that it is more readable.',
+               ...itemDefaults,
                  order: 1,
                  assignedUsers: {
-                    connect: [{ id: admin.id }] 
+                    connect: [{ id: dev.id }] 
                  },
-                 rowId: standardRow?.id
+                 rowId: standardRow?.id,
+                 subtasks: {
+                  create: [
+                    {
+                      title: 'Main screen fonts',
+                      content: 'Update fonts on the main screen',
+                      isDone: true
+                    },
+                    {
+                      title: 'Settings fonts',
+                      content: 'Update fonts on the settings screen',
+                      isDone: false
+                    }
+                  ]
+                 }
              }
           ]
         }
       }
     });
 
-    const colReview = await prisma.kanbanColumn.create({
+    await prisma.kanbanColumn.create({
       data: {
-          title: 'Code Review',
+          title: 'In Review',
           order: 2,
-          limit: 0,
+          limit: 5,
           items: {
               create: [
                  {
-                     title: 'Weryfikacja zmian w migracji',
-                     content: 'Sprawdzić poprawność SQL',
+                     title: 'Backend | Update Prisma seed',
+                     content: 'All elements should be in English, also add more tasks.',
+                   ...itemDefaults,
                      order: 0,
                      assignedUsers: {
                         connect: [{ id: admin.id }] 
                      },
-                     rowId: urgentRow?.id
+                     rowId: urgentRow?.id,
+                     subtasks: {
+                      create: [
+                        {
+                          title: 'Translate to English',
+                          content: 'Translate all database contents to English.',
+                          isDone: true
+                        },
+                        {
+                          title: 'Add more tasks',
+                          content: 'Add more tasks and subtasks to all columns.',
+                          isDone: true
+                        }
+                      ]
+                      
+                 }
                  }
               ]
           }
       }
     });
 
-    const colDone = await prisma.kanbanColumn.create({
+    await prisma.kanbanColumn.create({
       data: {
-        title: 'Zrobione',
+        title: 'Done',
         order: 3,
         limit: 0, // No limit
         items: {
           create: [
              { 
-                 title: 'Inicjalizacja repozytorium', 
-                 content: 'Git init i pierwszy commit',
+               title: 'Frontend | wip limit per column and row',
+                 content: 'Implement setting task limits per column and row; they should turn red once the limit is surpassed.',
+               ...itemDefaults,
                  order: 0,
                  assignedUsers: {
                     connect: [{ id: admin.id }] 
@@ -214,10 +286,45 @@ async function main() {
                  rowId: standardRow?.id
              },
              {
-                 title: 'Konfiguracja Docker',
-                 content: 'Dockerfile i docker-compose.yml',
+                 title: 'Docker configuration',
+                 content: 'Dockerfile and docker-compose.yml',
+               ...itemDefaults,
                  order: 1,
-                 rowId: standardRow?.id
+                 rowId: standardRow?.id,
+                 subtasks: {
+                  create: [
+                    {
+                      title: 'dockerfile',
+                      content: 'add dockerfile',
+                      isDone: true
+                    },
+                    {
+                      title: 'docker-compose.yml',
+                      content: 'add docker-compose.yml',
+                      isDone: true
+                    }
+                  ]
+                 }
+             },
+             {
+              title: 'Backend | code refactor',
+              content: 'Refactor the code to make it more readable.',
+              ...itemDefaults,
+              order: 2,
+              assignedUsers: {
+                    connect: [{ id: admin.id }] 
+                 },
+              rowId: standardRow?.id
+             },
+             {
+              title: 'Frontend | tidy up the UI',
+              content: 'Clean up the UI so that it is more readable.',
+              ...itemDefaults,
+              order: 3,
+              assignedUsers: {
+                connect: [{ id: user.id }]
+              },
+              rowId: standardRow?.id
              }
           ]
         }
@@ -225,6 +332,29 @@ async function main() {
     });
 
     console.log('Kanban columns seeded.');
+    // Create an example parent-child relation: find a seeded item and add a child
+    try {
+      const parent = await prisma.kanbanItem.findFirst({ where: { title: 'Frontend | theming' } });
+      if (parent) {
+        await prisma.kanbanItem.create({
+          data: {
+            title: 'Theming - child task',
+            content: 'Child task for theming',
+            order: parent.order + 1,
+            columnId: parent.columnId,
+            rowId: parent.rowId ?? null,
+            parentId: parent.id,
+            color: null,
+            deadline: null,
+            size: Size.M,
+            archived: false,
+          },
+        });
+        console.log('Created example child for:', parent.title);
+      }
+    } catch (e) {
+      console.warn('Failed to create example child item:', e);
+    }
   } else {
     console.log('Kanban columns already exist. Skipping.');
   }

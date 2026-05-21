@@ -1,4 +1,11 @@
-import { IsInt, IsNumber, IsOptional, IsString, ValidateIf, IsArray } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, ValidateIf, IsArray, IsDateString, IsEnum, IsBoolean } from 'class-validator';
+
+enum Size {
+  S = 'S',
+  M = 'M',
+  L = 'L',
+  XL = 'XL',
+}
 
 export class UpdateItemDto {
     @IsString()
@@ -23,6 +30,11 @@ export class UpdateItemDto {
     @IsNumber()
     @IsInt()
     @IsOptional()
+    parentId?: number | null;
+
+    @IsNumber()
+    @IsInt()
+    @IsOptional()
     order?: number;
 
     @ValidateIf((object, value) => value !== null)
@@ -35,4 +47,16 @@ export class UpdateItemDto {
     @IsString()
     @IsOptional()
     color?: string;
+
+    @IsDateString()
+    @IsOptional()
+    deadline?: string;
+    
+    @IsEnum(Size)
+    @IsOptional()
+    size?: Size = Size.M;
+    
+    @IsBoolean()
+    @IsOptional()
+    archived?: boolean;
 }

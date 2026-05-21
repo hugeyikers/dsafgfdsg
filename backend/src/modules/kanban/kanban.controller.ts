@@ -13,6 +13,11 @@ import { UpdateSubtaskDto } from './dto/update-subtask.dto';
 export class KanbanController {
   constructor(private readonly kanbanService: KanbanService) {}
 
+  @Get('time')
+  getTime() {
+    return this.kanbanService.getTime();
+  }
+
   @Get('all')
   findAll() {
     return this.kanbanService.findAll();
@@ -51,6 +56,11 @@ export class KanbanController {
   @Post('items')
   createItem(@Body() createItemDto: CreateItemDto) {
     return this.kanbanService.createItem(createItemDto);
+  }
+
+  @Get('items/:id/history')
+  getItemHistory(@Param('id', ParseIntPipe) id: number) {
+    return this.kanbanService.getItemHistory(id);
   }
 
   @Patch('items/move-batch')

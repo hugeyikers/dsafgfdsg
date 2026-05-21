@@ -34,12 +34,33 @@ const KanbanBoard = () => {
 
     const [isDeletingSidebar, setIsDeletingSidebar] = useState(false);
     const [isClearingSidebar, setIsClearingSidebar] = useState(false);
+    const [isDuplicateNameWarning, setIsDuplicateNameWarning] = useState(false);
     const [pendingMove, setPendingMove] = useState<{itemId: number, targetColId: number, targetRowId: number | null, targetIndex?: number} | null>(null);
+
+    const [dependencyError, setDependencyError] = useState<{ active: boolean; item: any; uncompleted: any[] }>({ active: false, item: null, uncompleted: [] });
+    const [subtaskError, setSubtaskError] = useState<{ active: boolean; item: any; uncompleted: any[] }>({ active: false, item: null, uncompleted: [] });
+    const [cascadeMoveWarning, setCascadeMoveWarning] = useState<{ active: boolean, movingItem: any, relatedItems: any[], relationType: 'parent' | 'children', targetColId: number, targetRowId: number | null, targetIndex: number } | null>(null);
 
     const [panel, setPanel] = useState<PanelState>({ isOpen: false, type: 'task', mode: 'view', item: null });
     const [activeField, setActiveField] = useState<string | null>(null);
     const [editValue, setEditValue] = useState<any>('');
     const [formData, setFormData] = useState({ title: '', content: '', color: '#ffffff', limit: 0, assignedUsersIds: [] as number[] });
+
+    const [relationSelect, setRelationSelect] = useState<{ active: boolean, type: 'parent' | 'children', sourceItem: any | null, selectedIds: number[] }>({ active: false, type: 'parent', sourceItem: null, selectedIds: [] });
+
+    const handleRelationSelectToggle = (item: any) => {
+        if (relationSelect.type === 'parent') {
+            if (item.id === relationSelect.sourceItem.id) return;
+            if (relationSelect.sourceItem.parentId === item.id) return;
+            if (relationSelect.sourceItem.childs?.some((c: any) => c.id === item.id)) return;
+            setRelationSelect(prev => ({ ...prev, selectedIds: prev.selectedIds.includes(item.id) ? [] : [item.id] }));
+        } else {
+            if (item.id === relationSelect.sourceItem.id) return;
+            if (item.parentId && item.parentId !== relationSelect.sourceItem.id) return;
+            if (item.parentId === relationSelect.sourceItem.id) return;
+            setRelationSelect(prev => ({ ...prev, selectedIds: prev.selectedIds.includes(item.id) ? prev.selectedIds.filter(id => id !== item.id) : [...prev.selectedIds, item.id] }));
+        }
+    };
 
     useEffect(() => {
         fetchBoard();
@@ -53,7 +74,12 @@ const KanbanBoard = () => {
             setEditValue('');
             setIsDeletingSidebar(false);
             setIsClearingSidebar(false);
+            setIsDuplicateNameWarning(false);
             setPendingMove(null);
+            setDependencyError({ active: false, item: null, uncompleted: [] });
+            setSubtaskError({ active: false, item: null, uncompleted: [] });
+            setCascadeMoveWarning(null);
+            setRelationSelect({ active: false, type: 'parent', sourceItem: null, selectedIds: [] });
         }
     }, [panel.isOpen]);
 
@@ -81,6 +107,8 @@ const KanbanBoard = () => {
     }, [columns, rows, panel.isOpen, panel.item?.id, panel.type]);
 
     const openPanel = (mode: PanelMode, type: PanelType, item: any = null, extra: any = null, isDoubleClick: boolean = false) => {
+        if (relationSelect.active || dependencyError.active || subtaskError.active || cascadeMoveWarning?.active) return; 
+
         const isSameItem = item ? panel.item?.id === item.id : (panel.item === null);
         const isSameExtra = extra ? (panel.extra?.colId === extra.colId && panel.extra?.rowId === extra.rowId) : true;
 
@@ -93,6 +121,7 @@ const KanbanBoard = () => {
         setActiveField(null);
         setIsDeletingSidebar(false);
         setIsClearingSidebar(false);
+        setIsDuplicateNameWarning(false);
         setPanel({ isOpen: true, mode, type, item, extra });
         setFormData({
             title: item?.title || '',
@@ -113,6 +142,15 @@ const KanbanBoard = () => {
         
         if (typeof finalValue === 'string') finalValue = finalValue.trim();
         if (activeField === 'content' && finalValue === '') finalValue = 'none';
+
+        if (panel.type === 'column' && activeField === 'title') {
+            finalValue = finalValue || `New ${panel.type}`;
+            const titleExists = columns.some(c => c.id !== id && c.title.toUpperCase() === finalValue.toUpperCase());
+            if (titleExists) {
+                setIsDuplicateNameWarning(true);
+                return;
+            }
+        }
 
         if (panel.type === 'task' && activeField === 'assignedUsersIds' && Array.isArray(finalValue)) {
             for (const userId of finalValue) {
@@ -196,12 +234,65 @@ const KanbanBoard = () => {
             const targetRowId = destParts[2] === 'null' ? null : parseInt(destParts[2]);
             const targetIndex = destination.index;
 
+            const targetCol = columns.find(c => c.id === targetColId);
+            const sourceCol = columns.find(c => c.id === sourceColId);
+            const currentItem = columns.flatMap(c => c.items).find(i => i.id === itemId);
+
+            // 1. Blokada przeniesienia DO Done (Subtaski Checklista)
+            if (targetCol && (targetCol.title.toLowerCase() === 'done' || targetCol.title.toLowerCase() === 'zrobione') && targetColId !== sourceColId) {
+                const uncompletedSubtasks = currentItem?.subtasks?.filter((s: any) => !s.isDone) || [];
+                if (uncompletedSubtasks.length > 0) {
+                    setSubtaskError({ active: true, item: currentItem, uncompleted: uncompletedSubtasks });
+                    setPanel({ isOpen: true, type: 'task', mode: 'view', item: currentItem });
+                    return;
+                }
+
+                // 2. Blokada przeniesienia DO Done (Zadania Podrzędne KanbanItems)
+                if (currentItem && currentItem.childs && currentItem.childs.length > 0) {
+                    const uncompletedChilds = currentItem.childs.filter(child => {
+                        const fullChild = columns.flatMap(c => c.items).find(i => i.id === child.id);
+                        return fullChild ? fullChild.columnId !== targetColId : false;
+                    });
+
+                    if (uncompletedChilds.length > 0) {
+                        setDependencyError({ active: true, item: currentItem, uncompleted: uncompletedChilds });
+                        setPanel({ isOpen: true, type: 'task', mode: 'view', item: currentItem });
+                        return;
+                    }
+                }
+            }
+
+            // 3. Blokada przeniesienia Z Done (Kaskadowe przeniesienie powiązanych zadań)
+            if (sourceCol && (sourceCol.title.toLowerCase() === 'done' || sourceCol.title.toLowerCase() === 'zrobione') && targetColId !== sourceColId) {
+                const childrenInDone = currentItem?.childs?.filter(c => columns.flatMap(col => col.items).find(i => i.id === c.id)?.columnId === sourceCol.id).map(c => columns.flatMap(col => col.items).find(i => i.id === c.id)) || [];
+                
+                let parentInDone = null;
+                if (currentItem?.parentId) {
+                    const parent = columns.flatMap(col => col.items).find(i => i.id === currentItem.parentId);
+                    if (parent && parent.columnId === sourceCol.id) {
+                        parentInDone = parent;
+                    }
+                }
+
+                if (childrenInDone.length > 0 || parentInDone) {
+                    setCascadeMoveWarning({ 
+                        active: true, 
+                        movingItem: currentItem, 
+                        relatedItems: childrenInDone.length > 0 ? childrenInDone : [parentInDone],
+                        relationType: childrenInDone.length > 0 ? 'children' : 'parent',
+                        targetColId,
+                        targetRowId,
+                        targetIndex
+                    });
+                    setPanel({ isOpen: true, type: 'task', mode: 'view', item: currentItem });
+                    return; 
+                }
+            }
+
             if (sourceColId !== targetColId) {
-                const targetCol = columns.find(c => c.id === targetColId);
                 if (targetCol && targetCol.limit > 0 && targetCol.items.length >= targetCol.limit) {
                     setPendingMove({ itemId, targetColId, targetRowId, targetIndex });
-                    const item = columns.flatMap(c => c.items).find(i => i.id === itemId);
-                    if (item) openPanel('view', 'task', item, null, false);
+                    if (currentItem) openPanel('view', 'task', currentItem, null, false);
                     return;
                 }
             }
@@ -220,6 +311,11 @@ const KanbanBoard = () => {
         const finalTitle = formData.title.trim() || `New ${panel.type}`;
 
         if (panel.type === 'column') {
+            const titleExists = columns.some(c => c.title.toUpperCase() === finalTitle.toUpperCase());
+            if (titleExists) {
+                setIsDuplicateNameWarning(true);
+                return;
+            }
             await addColumn(finalTitle, formData.color, formData.limit);
         } else if (panel.type === 'row') {
             await addRow(finalTitle, formData.color);
@@ -236,8 +332,13 @@ const KanbanBoard = () => {
             }
             const finalContent = formData.content.trim() || 'none';
             await addItem({
-                columnId: panel.extra.colId, rowId: panel.extra.rowId, title: finalTitle, 
-                content: finalContent, color: formData.color, assignedUsersIds: formData.assignedUsersIds
+                columnId: panel.extra.colId, 
+                rowId: panel.extra.rowId, 
+                parentId: panel.extra.parentId || null,
+                title: finalTitle, 
+                content: finalContent, 
+                color: formData.color, 
+                assignedUsersIds: formData.assignedUsersIds
             });
         }
         setPanel(prev => ({ ...prev, isOpen: false }));
@@ -259,13 +360,15 @@ const KanbanBoard = () => {
     };
 
     const closeSidebar = () => {
+        if (relationSelect.active || dependencyError.active || subtaskError.active || cascadeMoveWarning?.active) return;
         setPanel(prev => ({ ...prev, isOpen: false }));
-        setIsDeletingSidebar(false); setIsClearingSidebar(false); setPendingMove(null);
+        setIsDeletingSidebar(false); setIsClearingSidebar(false); setIsDuplicateNameWarning(false); setPendingMove(null);
     };
 
     const getItems = (colId: number, rowId: number | null) => {
         const col = columns.find(c => c.id === colId);
         if (!col) return [];
+        
         let result = col.items.filter(item => item.rowId === rowId);
         if (filteredUserIds.length > 0) result = result.filter(item => item.assignedUsers?.some((u: any) => filteredUserIds.includes(u.id)));
         if (panel.isOpen && activeField === 'color' && panel.type === 'task' && panel.item) {
@@ -304,7 +407,6 @@ const KanbanBoard = () => {
                     const totalSubtasks = item.subtasks?.length || 0;
                     const completedSubtasks = item.subtasks?.filter((s:any) => s.isDone).length || 0;
                     const hasCustomColor = item.color && item.color !== '#ffffff';
-                    
                     const dummyItemBgColor = !item.color || item.color === '#ffffff' ? 'var(--bg-card)' : item.color;
 
                     return (
@@ -315,15 +417,11 @@ const KanbanBoard = () => {
                                     {item.title || "Untitled Task"}
                                 </p>
                             </div>
-                            <div 
-                            className="w-full flex justify-between items-end mt-auto">
+                            <div className="w-full flex justify-between items-end mt-auto">
                                 {totalSubtasks > 0 ? (
-                                    <div 
-                                    className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold ${hasCustomColor ? 'bg-black/10 text-[#111827]' : 'bg-[var(--bg-page)] text-[var(--text-muted)]'}`}>
+                                    <div className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold ${hasCustomColor ? 'bg-black/10 text-[#111827]' : 'bg-[var(--bg-page)] text-[var(--text-muted)]'}`}>
                                         <ListTodo size={12} strokeWidth={2.5} className="mr-1" />
-                                        <span>
-                                            {completedSubtasks}/{totalSubtasks}
-                                        </span>
+                                        <span>{completedSubtasks}/{totalSubtasks}</span>
                                     </div>
                                 ) : <div />}
                                 {item.assignedUsers && item.assignedUsers.length > 0 && (
@@ -350,10 +448,7 @@ const KanbanBoard = () => {
         
         const liveColColor = (panel.isOpen && activeField === 'color' && panel.type === 'column' && panel.item?.id === col.id) ? editValue : col.color;
         const isEditedCol = panel.isOpen && panel.type === 'column' && panel.item?.id === col.id;
-        
-        // Dodano logikę podświetlania pola, do którego dodajemy nowe zadanie
         const isAddingTaskHere = panel.isOpen && panel.mode === 'add' && panel.type === 'task' && panel.extra?.colId === col.id && panel.extra?.rowId === rowId;
-
         const isDraggedColumn = dragState.isDragging && dragState.type === 'column' && dragState.id === `col-${col.id}`;
 
         let cellBgColor = (liveColColor && liveColColor !== '#ffffff') ? liveColColor : 'var(--bg-card)';
@@ -381,7 +476,7 @@ const KanbanBoard = () => {
                 }}
                 onClick={(e) => {
                     e.stopPropagation();
-                    if (isDeletingSidebar || isClearingSidebar) return;
+                    if (isDeletingSidebar || isClearingSidebar || relationSelect.active || dependencyError.active || subtaskError.active || cascadeMoveWarning?.active) return;
                     const target = e.target as HTMLElement;
                     if (target === e.currentTarget || target.classList.contains('flex-1') || target.closest('.group\\/empty')) {
                         if (panel.isOpen) openPanel('add', 'task', null, { colId: col.id, rowId }, false);
@@ -389,7 +484,7 @@ const KanbanBoard = () => {
                 }}
                 onDoubleClick={(e) => {
                     e.stopPropagation();
-                    if (isDeletingSidebar || isClearingSidebar) return;
+                    if (isDeletingSidebar || isClearingSidebar || relationSelect.active || dependencyError.active || subtaskError.active || cascadeMoveWarning?.active) return;
                     const target = e.target as HTMLElement;
                     if (target === e.currentTarget || target.classList.contains('flex-1') || target.closest('.group\\/empty')) {
                         openPanel('add', 'task', null, { colId: col.id, rowId }, true);
@@ -412,6 +507,9 @@ const KanbanBoard = () => {
                                         onClick={() => { if (isDeletingSidebar || isClearingSidebar) return; if (panel.isOpen) openPanel('view', 'task', item, null, false); }}
                                         onDoubleClick={() => { if (isDeletingSidebar || isClearingSidebar) return; openPanel('view', 'task', item, null, true); }}
                                         isEdited={isEditedTask}
+                                        openedPanelItem={panel.isOpen && panel.type === 'task' ? panel.item : null}
+                                        relationSelect={relationSelect}
+                                        onRelationSelectToggle={handleRelationSelectToggle}
                                     />
                                 );
                             })}
@@ -419,15 +517,6 @@ const KanbanBoard = () => {
                         </div>
                     )}
                 </Droppable>
-                <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none pl-8">
-                    <span 
-                        style={{
-                            padding:5
-                        }}
-                        className="text-[9px] italic text-[var(--text-muted)] bg-[var(--bg-card)]/70 px-2 py-0.5 rounded-full shadow-sm border border-[var(--border-base)]">
-                            Double click to add task
-                    </span>
-                </div>
             </div>
         );
     };
@@ -436,7 +525,6 @@ const KanbanBoard = () => {
         if (!headerNode) return null;
         return createPortal(
             <div className="flex items-center gap-4 pl-8 h-14">
-                
                 {filteredUserIds.length > 0 && (
                     <button 
                         onClick={() => setFilteredUserIds([])} 
@@ -455,9 +543,7 @@ const KanbanBoard = () => {
                     return (
                         <div
                             key={u.id}
-                            draggable={false} 
                             onClick={() => setFilteredUserIds(prev => prev.includes(u.id) ? prev.filter(id => id !== u.id) : [...prev, u.id])}
-                            onDoubleClick={(e) => { e.stopPropagation(); setFilteredUserIds([u.id]); }}
                             className={`group relative flex flex-col items-center transition-all select-none cursor-pointer ${isDimmed ? 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0' : ''}`}
                             title={`${u.fullName} (${u.email}) • ${taskCount}/${maxTasksPerUser} tasks assigned`}
                         >
@@ -485,21 +571,38 @@ const KanbanBoard = () => {
                 panel={panel} setPanel={setPanel} formData={formData} setFormData={setFormData}
                 activeField={activeField} editValue={editValue} setEditValue={setEditValue} startEdit={startEdit} cancelEdit={cancelEdit} 
                 saveEdit={saveEdit} handleKeyDownTitle={handleKeyDownTitle} handleKeyDownDefault={handleKeyDownDefault}
+                allTasks={columns.flatMap(c => c.items)}
                 handlePanelSaveGlobal={handlePanelSaveGlobal} handleClearTasks={handleClearTasks}
                 SIDEBAR_WIDTH={SIDEBAR_WIDTH} SIDEBAR_LEFT_PADDING={SIDEBAR_LEFT_PADDING} SIDEBAR_RIGHT_PADDING={SIDEBAR_RIGHT_PADDING} DETAILS_FIELD_RADIUS={DETAILS_FIELD_RADIUS} FOOTER_HEIGHT={FOOTER_HEIGHT} FOOTER_LEFT_RATIO={FOOTER_LEFT_RATIO} FOOTER_RIGHT_RATIO={FOOTER_RIGHT_RATIO}
                 onAssigneeDrop={onAssigneeDrop} onRemoveAssignee={onRemoveAssignee} dispatchHover={() => {}} 
-                isDeleting={isDeletingSidebar} setIsDeleting={setIsDeletingSidebar} isClearing={isClearingSidebar} setIsClearing={setIsClearingSidebar} pendingMove={pendingMove} setPendingMove={setPendingMove} handleConfirmMove={handleConfirmMove}
+                isDeleting={isDeletingSidebar} setIsDeleting={setIsDeletingSidebar} isClearing={isClearingSidebar} setIsClearing={setIsClearingSidebar} 
+                isDuplicateNameWarning={isDuplicateNameWarning} setIsDuplicateNameWarning={setIsDuplicateNameWarning}
+                pendingMove={pendingMove} setPendingMove={setPendingMove} handleConfirmMove={handleConfirmMove}
+                startRelationSelect={(type: 'parent' | 'children') => {
+                    const initialIds = type === 'parent' 
+                        ? (panel.item?.parentId ? [panel.item.parentId] : []) 
+                        : (panel.item?.childs?.map((c: any) => c.id) || []);
+                    setRelationSelect({ active: true, type, sourceItem: panel.item, selectedIds: initialIds });
+                }}
+                relationSelect={relationSelect}
+                setRelationSelect={setRelationSelect}
+                dependencyError={dependencyError}
+                setDependencyError={setDependencyError}
+                subtaskError={subtaskError}
+                setSubtaskError={setSubtaskError}
+                cascadeMoveWarning={cascadeMoveWarning}
+                setCascadeMoveWarning={setCascadeMoveWarning}
             />
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                    <div className="flex-1 overflow-auto p-4 pt-0 mt-4" onClick={() => { if (panel.isOpen && !isDeletingSidebar && !isClearingSidebar && !dragState.isDragging) closeSidebar(); }}>
+                    <div className="flex-1 overflow-auto p-4 pt-0 mt-4" onClick={() => { if (relationSelect.active || dependencyError.active || subtaskError.active || cascadeMoveWarning?.active) return; if (panel.isOpen && !isDeletingSidebar && !isClearingSidebar && !dragState.isDragging) closeSidebar(); }}>
                         <div id="kanban-board-container" className="inline-block min-w-full pb-20 bg-[var(--bg-card)] border-2 border-[var(--border-base)] rounded-2xl shadow-sm mt-16 transition-colors duration-300">
                             
                             <div className="flex sticky top-0 z-[35] items-stretch border-b-2 border-[var(--border-base)] bg-[var(--bg-card)] shadow-sm h-[88px] transition-colors duration-300">
                                 <div className="w-56 h-full flex-shrink-0 border-r-2 border-[var(--border-base)] bg-[var(--bg-page)] relative overflow-hidden group/corner transition-colors duration-300">
-                                    <button onClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar) return; openPanel('add', 'column', null, null, false); }} className="absolute inset-0 w-full h-full text-[var(--text-muted)] hover:text-[var(--accent-primary)] hover:bg-[var(--accent-primary-light)] transition-colors cursor-pointer outline-none font-black text-[12px] uppercase tracking-widest flex items-start justify-end pt-3.5 pr-4" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}> Add Column &rarr; </button>
-                                    <button onClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar) return; openPanel('add', 'row', null, null, false); }} className="absolute inset-0 w-full h-full text-[var(--text-muted)] hover:text-[var(--accent-primary)] hover:bg-[var(--accent-primary-light)] transition-colors cursor-pointer outline-none font-black text-[12px] uppercase tracking-widest flex items-end justify-start pb-3.5 pl-4 bg-[var(--bg-page)]/50" style={{ clipPath: 'polygon(0 0, 100% 100%, 0 100%)' }}> Add Row &darr; </button>
+                                    <button onClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar || relationSelect.active || dependencyError.active || subtaskError.active || cascadeMoveWarning?.active) return; openPanel('add', 'column', null, null, false); }} className="absolute inset-0 w-full h-full text-[var(--text-muted)] hover:text-[var(--accent-primary)] hover:bg-[var(--accent-primary-light)] transition-colors cursor-pointer outline-none font-black text-[12px] uppercase tracking-widest flex items-start justify-end pt-3.5 pr-4" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}> Add Column &rarr; </button>
+                                    <button onClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar || relationSelect.active || dependencyError.active || subtaskError.active || cascadeMoveWarning?.active) return; openPanel('add', 'row', null, null, false); }} className="absolute inset-0 w-full h-full text-[var(--text-muted)] hover:text-[var(--accent-primary)] hover:bg-[var(--accent-primary-light)] transition-colors cursor-pointer outline-none font-black text-[12px] uppercase tracking-widest flex items-end justify-start pb-3.5 pl-4 bg-[var(--bg-page)]/50" style={{ clipPath: 'polygon(0 0, 100% 100%, 0 100%)' }}> Add Row &darr; </button>
                                     <div className="absolute inset-0 pointer-events-none"><svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100"><line x1="0" y1="0" x2="100" y2="100" stroke="var(--border-base)" strokeWidth="2" vectorEffect="non-scaling-stroke" /></svg></div>
                                 </div>
                                  
@@ -507,21 +610,13 @@ const KanbanBoard = () => {
                                     const isEditedBacklog = panel.isOpen && panel.type === 'column' && panel.item?.id === backlogColumn.id;
                                     return (
                                         <div 
-                                            onClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar) return; if (panel.isOpen) openPanel('view', 'column', backlogColumn, null, false); }}
-                                            onDoubleClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar) return; openPanel('view', 'column', backlogColumn, null, true); }}
+                                            onClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar || relationSelect.active || dependencyError.active || subtaskError.active || cascadeMoveWarning?.active) return; if (panel.isOpen) openPanel('view', 'column', backlogColumn, null, false); }}
+                                            onDoubleClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar || relationSelect.active || dependencyError.active || subtaskError.active || cascadeMoveWarning?.active) return; openPanel('view', 'column', backlogColumn, null, true); }}
                                             className={`group flex-shrink-0 border-r-2 border-dashed flex flex-col items-center justify-center transition-colors select-none cursor-pointer relative ${isEditedBacklog ? 'ring-inset ring-4 ring-[var(--accent-primary)] z-30' : ''}`}
                                             style={{ width: `${COLUMN_WIDTH}px`, minWidth: `${COLUMN_WIDTH}px`, borderColor: isEditedBacklog ? 'var(--accent-primary)' : 'var(--border-base)', backgroundColor: 'var(--bg-page)' }}
                                         >
                                             <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
-                                            <h3 className="font-black text-sm tracking-widest uppercase text-center w-full truncate text-[var(--text-muted)] px-4 relative z-10">{backlogColumn.title}</h3>
-                                            <div 
-                                                className="absolute bottom-0.5 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                                                    <span 
-                                                        style={{paddingRight:5, paddingLeft:5, paddingTop:3, paddingBottom:3}}
-                                                        className="text-[9px] italic text-[var(--text-muted)] bg-[var(--bg-card)]/70 px-2 py-0.5 rounded-full">
-                                                        Double click to view details
-                                                    </span>
-                                            </div>
+                                            <h3 className="font-black text-sm tracking-widest uppercase text-center w-full truncate text-[var(--text-muted)] relative z-10 block" style={{ paddingLeft: '24px', paddingRight: '24px' }}>{backlogColumn.title}</h3>
                                         </div>
                                     );
                                 })()}
@@ -535,31 +630,20 @@ const KanbanBoard = () => {
                                                 const isEditedCol = panel.isOpen && panel.type === 'column' && panel.item?.id === col.id;
 
                                                 return (
-                                                    <Draggable key={`col-${col.id}`} draggableId={`col-${col.id}`} index={index}>
+                                                    <Draggable key={`col-${col.id}`} draggableId={`col-${col.id}`} index={index} isDragDisabled={relationSelect.active || dependencyError.active || subtaskError.active || !!cascadeMoveWarning?.active}>
                                                         {(provided, snapshot) => (
                                                             <div 
                                                                 ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                                                                onClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar) return; if (panel.isOpen) openPanel('view', 'column', col, null, false); }}
-                                                                onDoubleClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar) return; openPanel('view', 'column', col, null, true); }}
+                                                                onClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar || relationSelect.active || dependencyError.active || subtaskError.active || cascadeMoveWarning?.active) return; if (panel.isOpen) openPanel('view', 'column', col, null, false); }}
+                                                                onDoubleClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar || relationSelect.active || dependencyError.active || subtaskError.active || cascadeMoveWarning?.active) return; openPanel('view', 'column', col, null, true); }}
                                                                 className={`group flex-shrink-0 border-r-2 flex flex-col items-center justify-center select-none cursor-grab active:cursor-grabbing transition-shadow transition-colors relative ${snapshot.isDragging ? 'z-[9999] shadow-2xl ring-4 ring-[var(--accent-primary)] border-transparent rounded-xl' : ''} ${isOverLimit ? 'ring-inset ring-2 ring-[var(--status-error)]' : ''} ${isEditedCol && !snapshot.isDragging ? 'ring-inset ring-4 ring-[var(--accent-primary)] z-30' : ''}`}
                                                                 style={{ width: `${COLUMN_WIDTH}px`, minWidth: `${COLUMN_WIDTH}px`, backgroundColor: isOverLimit ? 'rgba(239, 68, 68, 0.1)' : (liveColColor && liveColColor !== '#ffffff' ? liveColColor : 'var(--bg-card)'), borderColor: isEditedCol ? 'var(--accent-primary)' : (isOverLimit ? 'var(--status-error)' : 'var(--border-base)'), ...provided.draggableProps.style }}
                                                             >
                                                                 <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors rounded-xl"></div>
-                                                                <div className="flex flex-col items-center justify-center w-full px-4 mt-2 relative z-10">
-                                                                    <h3 style={{ color: isOverLimit ? 'var(--status-error)' : (liveColColor && liveColColor !== '#ffffff' ? '#111827' : 'var(--text-main)') }} className="font-black text-sm tracking-widest uppercase text-center w-full truncate">{col.title}</h3>
+                                                                <div className="flex flex-col items-center justify-center w-full mt-2 relative z-10" style={{ paddingLeft: '24px', paddingRight: '24px' }}>
+                                                                    <h3 style={{ color: isOverLimit ? 'var(--status-error)' : (liveColColor && liveColColor !== '#ffffff' ? '#111827' : 'var(--text-main)') }} className="font-black text-sm tracking-widest uppercase text-center w-full truncate block">{col.title}</h3>
                                                                     {col.limit > 0 && <span style={{paddingRight:5, paddingLeft:5, paddingTop:3, paddingBottom:3}} className={`text-xs font-bold mt-2 px-3 py-1 rounded-full border ${isOverLimit ? 'bg-[var(--status-error)]/10 text-[var(--status-error)] border-[var(--status-error)]' : 'bg-[var(--bg-page)] text-[var(--text-muted)] border-[var(--border-base)]'}`}>WIP: {col.items.length} / {col.limit}</span>}
                                                                 </div>
-                                                                <div
-                                                                    className="absolute bottom-0.5 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                                                                        <span 
-                                                                        style={{
-                                                                            padding:5
-                                                                        }}
-                                                                        className="text-[9px] italic text-[var(--text-muted)] bg-[var(--bg-card)]/70 px-2 py-0.5 rounded-full">
-                                                                        Drag to reorder / Double click to view details
-                                                                        </span>
-                                                                </div>
-                                                                
                                                                 {snapshot.isDragging && dragState.type === 'column' && dragState.id === `col-${col.id}` && (
                                                                     <div className="absolute left-[-4px] w-[calc(100%+8px)] flex flex-col pointer-events-none z-[9999] opacity-95 shadow-2xl bg-[var(--bg-card)] rounded-b-xl"
                                                                          style={{ top: 'calc(100% + 2px)', borderLeft: '4px solid var(--accent-primary)', borderRight: '4px solid var(--accent-primary)', borderBottom: '4px solid var(--accent-primary)' }}>
@@ -586,31 +670,22 @@ const KanbanBoard = () => {
                                             const isEditedRow = panel.isOpen && panel.type === 'row' && panel.item?.id === row.id;
 
                                             return (
-                                                <Draggable key={`row-${row.id}`} draggableId={`row-${row.id}`} index={index}>
+                                                <Draggable key={`row-${row.id}`} draggableId={`row-${row.id}`} index={index} isDragDisabled={relationSelect.active || dependencyError.active || subtaskError.active || !!cascadeMoveWarning?.active}>
                                                     {(provided, snapshot) => (
                                                         <div ref={provided.innerRef} {...provided.draggableProps} className={`flex relative border-b-2 border-[var(--border-base)] transition-shadow transition-colors ${snapshot.isDragging ? 'z-50 ring-4 ring-[var(--accent-primary)] shadow-2xl bg-[var(--bg-card)] rounded-xl overflow-hidden' : ''}`} style={{ ...provided.draggableProps.style }}>
                                                             <div 
                                                                 {...provided.dragHandleProps}
-                                                                onClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar) return; if (panel.isOpen) openPanel('view', 'row', row, null, false); }}
-                                                                onDoubleClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar) return; openPanel('view', 'row', row, null, true); }}
+                                                                onClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar || relationSelect.active || dependencyError.active || subtaskError.active || cascadeMoveWarning?.active) return; if (panel.isOpen) openPanel('view', 'row', row, null, false); }}
+                                                                onDoubleClick={(e) => { e.stopPropagation(); if (isDeletingSidebar || isClearingSidebar || relationSelect.active || dependencyError.active || subtaskError.active || cascadeMoveWarning?.active) return; openPanel('view', 'row', row, null, true); }}
                                                                 className={`group w-56 flex-shrink-0 border-r-2 border-[var(--border-base)] p-6 flex flex-col items-center justify-center text-center cursor-grab active:cursor-grabbing transition-colors select-none relative ${isEditedRow && !snapshot.isDragging ? 'ring-inset ring-4 ring-[var(--accent-primary)] z-30' : ''}`}
                                                                 style={{ backgroundColor: liveRowColor === '#ffffff' ? 'var(--bg-card)' : liveRowColor }}
                                                             >
                                                                 <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
-                                                                <span style={{ color: liveRowColor && liveRowColor !== '#ffffff' ? '#111827' : 'var(--text-main)' }} className="font-black text-sm uppercase tracking-widest drop-shadow-sm mb-2 relative z-10">{row.title}</span>
-                                                                <div 
-                                                                    className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                                                                        <span 
-                                                                        style={{padding:5}}
-                                                                        className="text-[9px] italic text-[var(--text-muted)] bg-[var(--bg-card)]/70 px-2 py-0.5 rounded-full">
-                                                                        Drag to reorder / Double click to view details
-                                                                        </span>
-                                                                </div>
+                                                                <span style={{ color: liveRowColor && liveRowColor !== '#ffffff' ? '#111827' : 'var(--text-main)', paddingLeft: '16px', paddingRight: '16px' }} className="font-black text-sm uppercase tracking-widest drop-shadow-sm mb-2 relative z-10 w-full truncate block">{row.title}</span>
                                                             </div>
 
                                                             {backlogColumn && renderCell(backlogColumn, row.id, true, false)}
                                                             {draggableColumns.map(col => renderCell(col, row.id, false, false))}
-                                                            
                                                             <div className="flex-1 bg-transparent"></div>
                                                         </div>
                                                     )}
@@ -624,23 +699,13 @@ const KanbanBoard = () => {
 
                             <div className="flex relative border-b-2 border-[var(--border-base)]" style={{ backgroundColor: 'transparent' }}>
                                 <div 
-                                    onClick={(e) => { e.stopPropagation(); if(isDeletingSidebar||isClearingSidebar)return; openPanel('view', 'row', { id: 'unlabeled', title: 'Unlabeled' }, null, false); }}
-                                    onDoubleClick={(e) => { e.stopPropagation(); if(isDeletingSidebar||isClearingSidebar)return; openPanel('view', 'row', { id: 'unlabeled', title: 'Unlabeled' }, null, true); }}
+                                    onClick={(e) => { e.stopPropagation(); if(isDeletingSidebar||isClearingSidebar||relationSelect.active||dependencyError.active||subtaskError.active||cascadeMoveWarning?.active)return; openPanel('view', 'row', { id: 'unlabeled', title: 'Unlabeled' }, null, false); }}
+                                    onDoubleClick={(e) => { e.stopPropagation(); if(isDeletingSidebar||isClearingSidebar||relationSelect.active||dependencyError.active||subtaskError.active||cascadeMoveWarning?.active)return; openPanel('view', 'row', { id: 'unlabeled', title: 'Unlabeled' }, null, true); }}
                                     className={`group w-56 flex-shrink-0 border-r-2 border-dashed flex flex-col items-center justify-center transition-colors select-none cursor-pointer relative ${panel.isOpen && panel.type === 'row' && panel.item?.id === 'unlabeled' ? 'ring-inset ring-4 ring-[var(--accent-primary)] z-30' : ''}`}
                                     style={{ borderColor: panel.isOpen && panel.type === 'row' && panel.item?.id === 'unlabeled' ? 'var(--accent-primary)' : 'var(--border-base)', backgroundColor: 'var(--bg-page)' }}
                                 >
                                     <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.03] pointer-events-none transition-colors"></div>
-                                    <h3 className="font-black text-sm tracking-widest uppercase text-center w-full truncate text-[var(--text-muted)] px-4 relative z-10">Unlabeled</h3>
-                                    <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                                        <span 
-                                        className="text-[9px] italic text-[var(--text-muted)] bg-[var(--bg-card)]/70 px-2 py-0.5 rounded-full"
-                                        style={{
-                                            padding:5
-                                        }}
-                                        >
-                                        Double click to view details
-                                        </span>
-                                    </div>
+                                    <h3 className="font-black text-sm tracking-widest uppercase text-center w-full truncate text-[var(--text-muted)] relative z-10 block" style={{ paddingLeft: '16px', paddingRight: '16px' }}>Unlabeled</h3>
                                 </div>
 
                                 {backlogColumn && renderCell(backlogColumn, null, true, true)}
@@ -651,10 +716,14 @@ const KanbanBoard = () => {
                     </div>
                 </DragDropContext>
                 
-                {(isDeletingSidebar || isClearingSidebar) && (
+                {/* BLUR + ZACIEMNIENIE TŁA (Tylko dla błędów i ostrzeżeń - nie bluuruje tablicy w trakcie wyboru relacji) */}
+                {(isDeletingSidebar || isClearingSidebar || isDuplicateNameWarning || dependencyError.active || subtaskError.active || cascadeMoveWarning?.active) && (
                     <div 
                         className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm transition-all duration-300 pointer-events-auto"
-                        onClick={() => { setIsDeletingSidebar(false); setIsClearingSidebar(false); }}
+                        onClick={() => { 
+                            if (dependencyError.active || subtaskError.active || cascadeMoveWarning?.active) return; // Zablokuj kliknięcie w tło dla trybów specjalnych
+                            setIsDeletingSidebar(false); setIsClearingSidebar(false); setIsDuplicateNameWarning(false); 
+                        }}
                     />
                 )}
             </div>

@@ -3,10 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend",
     "frontend": "cd frontend && npm run dev",
     "backend": "cd backend && npm run start:dev",
-    "start": "concurrently \"npm run frontend\" \"npm run backend\"",
-    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend"
+    "start": "node ./start-launcher.js",
+    "test:frontend": "cd frontend && npm run test",
+    "test:backend": "cd backend && npm run test",
+    "test": "node ./test-launcher.js"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

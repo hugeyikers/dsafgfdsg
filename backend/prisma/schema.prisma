@@ -54,7 +54,13 @@ model KanbanItem {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   color         String?
-  subtasks      KanbanItemSubTask[] 
+  subtasks      KanbanItemSubTask[]
+  deadline      DateTime?
+  size          Size         @default(M)
+  archived      Boolean      @default(false)
+  parentId      Int?
+  parent        KanbanItem?  @relation("ItemChildren", fields: [parentId], references: [id], onDelete: Restrict)
+  childs        KanbanItem[] @relation("ItemChildren")
 }
 
 model KanbanItemSubTask {
@@ -70,4 +76,28 @@ model KanbanItemSubTask {
 enum Role {
   ADMINISTRATOR
   USER
+}
+
+enum Size {
+  S
+  M
+  L
+  XL
+}
+
+enum KanbanItemHistoryAction {
+  CREATED
+  UPDATED
+  DELETED
+}
+
+model KanbanItemHistory {
+  id           Int                     @id @default(autoincrement())
+  itemId       Int
+  action       KanbanItemHistoryAction
+  beforeState  Json?
+  afterState   Json?
+  createdAt    DateTime                @default(now())
+
+  @@index([itemId, createdAt])
 }

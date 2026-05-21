@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, X, Save, LayoutPanelLeft, AlertTriangle, Pencil, PanelRightOpen, BrushCleaning, Check } from 'lucide-react';
+import { Plus, Trash2, X, Save, LayoutPanelLeft, AlertTriangle, Pencil, PanelRightOpen, BrushCleaning, Check, ArrowUpToLine, Network } from 'lucide-react';
 import { useUserStore } from '../../../store/useUserStore';
 import { useKanbanStore } from '../../../store/useKanbanStore';
 
@@ -12,6 +12,7 @@ export interface PanelState {
     mode: PanelMode;
     item: any;
     extra?: any;
+    allTasks?: any[];
 }
 
 export interface EditSidebarProps {
@@ -36,9 +37,21 @@ export interface EditSidebarProps {
     setIsDeleting: React.Dispatch<React.SetStateAction<boolean>>;
     isClearing: boolean;
     setIsClearing: React.Dispatch<React.SetStateAction<boolean>>;
+    isDuplicateNameWarning: boolean;
+    setIsDuplicateNameWarning: React.Dispatch<React.SetStateAction<boolean>>;
     pendingMove: any;
     setPendingMove: React.Dispatch<React.SetStateAction<any>>;
     handleConfirmMove: () => void;
+    startRelationSelect?: (type: 'parent' | 'children') => void;
+    relationSelect?: { active: boolean, type: 'parent' | 'children', sourceItem: any | null, selectedIds: number[] };
+    setRelationSelect?: React.Dispatch<React.SetStateAction<{ active: boolean, type: 'parent' | 'children', sourceItem: any | null, selectedIds: number[] }>>;
+    dependencyError?: { active: boolean; item: any; uncompleted: any[] };
+    setDependencyError?: React.Dispatch<React.SetStateAction<{ active: boolean; item: any; uncompleted: any[] }>>;
+    subtaskError?: { active: boolean; item: any; uncompleted: any[] };
+    setSubtaskError?: React.Dispatch<React.SetStateAction<{ active: boolean; item: any; uncompleted: any[] }>>;
+    cascadeMoveWarning?: { active: boolean; movingItem: any; relatedItems: any[]; relationType: 'parent' | 'children'; targetColId: number; targetRowId: number | null; targetIndex: number } | null;
+    setCascadeMoveWarning?: React.Dispatch<React.SetStateAction<any>>;
+    allTasks?: any[];
     SIDEBAR_WIDTH: number;
     SIDEBAR_LEFT_PADDING: number;
     SIDEBAR_RIGHT_PADDING: number;
@@ -51,15 +64,17 @@ export interface EditSidebarProps {
 const EditSidebar: React.FC<EditSidebarProps> = ({
     panel, setPanel, formData, setFormData, activeField, editValue, setEditValue, 
     startEdit, cancelEdit, saveEdit, handleKeyDownTitle, handleKeyDownDefault,
-    handlePanelSaveGlobal, handleClearTasks, dispatchHover,
+    handlePanelSaveGlobal, handleClearTasks, dispatchHover, allTasks,
     onAssigneeDrop, onRemoveAssignee, isDeleting, setIsDeleting, isClearing, setIsClearing,
-    pendingMove, setPendingMove, handleConfirmMove,
+    isDuplicateNameWarning, setIsDuplicateNameWarning,
+    pendingMove, setPendingMove, handleConfirmMove, startRelationSelect,
+    relationSelect, setRelationSelect, dependencyError, setDependencyError,
+    subtaskError, setSubtaskError, cascadeMoveWarning, setCascadeMoveWarning,
     SIDEBAR_WIDTH, SIDEBAR_LEFT_PADDING, SIDEBAR_RIGHT_PADDING, DETAILS_FIELD_RADIUS,
     FOOTER_HEIGHT, FOOTER_LEFT_RATIO, FOOTER_RIGHT_RATIO
 }) => {
     const { users = [] } = useUserStore();
-    const { columns = [], rows = [], removeColumn, removeRow, removeItem, addSubtask, updateSubtask, removeSubtask } = useKanbanStore();
-    
+    const { columns = [], rows = [], removeColumn, removeRow, removeItem, addSubtask, updateSubtask, removeSubtask, updateItem, moveItem } = useKanbanStore();
     const [targetMoveId, setTargetMoveId] = useState<number | 'unlabeled'>('unlabeled');
     const [deleteAction, setDeleteAction] = useState<'move' | 'delete'>('move');
     const [isWipWarning, setIsWipWarning] = useState(false);
@@ -150,14 +165,10 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
         handlePanelSaveGlobal();
     };
 
-    const handleAddSubtask = async () => {
-        if (!newSubtaskTitle.trim() || !panel.item) return;
-        await addSubtask(panel.item.id, newSubtaskTitle.trim());
-        setNewSubtaskTitle('');
-    };
-
     const confirmDelete = () => {
         if (!panel.item) return;
+
+        if (panel.type === 'task' && panel.item?.childs?.length > 0) return;
 
         if (panel.type === 'task') {
             removeItem(panel.item.id);
@@ -183,6 +194,11 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
         setIsDeleting(false);
     };
 
+    const currentSubtasks = isEditingSubtasks && localSubtasks ? localSubtasks : (panel.item?.subtasks || []);
+    const totalSubtasks = currentSubtasks.length;
+    const completedSubtasks = currentSubtasks.filter((s: any) => s.isDone).length;
+    const progressValue = totalSubtasks > 0 ? (completedSubtasks / totalSubtasks) * 100 : 0;
+
     return (
         <aside 
             style={{ width: panel.isOpen ? `${SIDEBAR_WIDTH}px` : '0px' }}
@@ -193,26 +209,37 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                     style={{ paddingLeft: `${SIDEBAR_LEFT_PADDING}px`, paddingRight: `${SIDEBAR_RIGHT_PADDING}px`, height: 60 }}
                     className="flex font-black items-center justify-between py-6 border-b border-[var(--border-base)] bg-[var(--bg-page)] flex-shrink-0 transition-colors"
                 >
-                    <h3 className="text-lg text-[var(--text-main)] uppercase tracking-widest flex items-center gap-2">
-                        {isDeleting ? (
+                    <h3 className="text-base text-[var(--text-main)] uppercase tracking-widest flex items-center gap-2 truncate">
+                        {dependencyError?.active || subtaskError?.active ? (
+                            <><AlertTriangle className="text-[var(--status-error)]" size={20}/> Blocked Move</>
+                        ) : cascadeMoveWarning?.active ? (
+                            <><Network className="text-[var(--status-warning)]" size={20}/> Cascade Move</>
+                        ) : relationSelect?.active ? (
+                            <><Network className="text-[var(--accent-primary)]" size={20}/> Assign Relation</>
+                        ) : isDeleting ? (
                             <><Trash2 className="text-[var(--status-error)]" size={20}/> Delete {panel.type}</>
                         ) : isClearing ? (
                             <><Trash2 className="text-[var(--status-error)]" size={20}/> Clear Tasks</>
                         ) : showWipWarning ? (
                             <><AlertTriangle className="text-[var(--status-warning)]" size={20}/> Limit Exceeded</>
+                        ) : isDuplicateNameWarning ? (
+                            <><AlertTriangle className="text-[var(--status-error)]" size={20}/> Invalid Name</>
                         ) : (
                             <><LayoutPanelLeft className="text-[var(--accent-primary)]" size={20}/> {panel.mode === 'add' ? 'Add' : 'Details'} {panel.type}</>
                         )}
                     </h3>
                     <button 
                         onClick={() => {
+                            if (relationSelect?.active || dependencyError?.active || subtaskError?.active || cascadeMoveWarning?.active) return; 
                             setPanel(prev => ({...prev, isOpen: false}));
                             setIsDeleting(false);
                             setIsClearing(false);
                             setIsWipWarning(false);
+                            setIsDuplicateNameWarning(false);
                             setPendingMove(null);
                         }} 
-                        className="p-1.5 text-[var(--text-muted)] hover:text-[var(--status-error)] hover:bg-[var(--status-error)]/10 rounded-full transition-colors"
+                        disabled={relationSelect?.active || dependencyError?.active || subtaskError?.active || !!cascadeMoveWarning?.active}
+                        className={`p-1.5 text-[var(--text-muted)] hover:text-[var(--status-error)] hover:bg-[var(--status-error)]/10 rounded-full transition-colors ${(relationSelect?.active || dependencyError?.active || subtaskError?.active || cascadeMoveWarning?.active) ? 'opacity-20 cursor-not-allowed' : ''}`}
                     >
                         <X size={25}/>
                     </button>
@@ -222,14 +249,100 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                     style={{ paddingTop: `20px`, paddingLeft: `${SIDEBAR_LEFT_PADDING}px`, paddingRight: `${SIDEBAR_RIGHT_PADDING}px` }}
                     className="flex-1 overflow-y-auto pb-6 flex flex-col gap-6"
                 >
-                    {isDeleting ? (
+                    {dependencyError?.active ? (
+                        <>
+                            <div className="p-6 justify-center bg-[var(--status-error)]/10 rounded-2xl border-2 border-[var(--status-error)]/30 flex gap-4 text-[var(--status-error)] text-base">
+                                <AlertTriangle className="flex-shrink-0 mt-0.5" size={28} />
+                                <div>
+                                    <span className="font-black block mb-2 text-lg">Move Blocked!</span>
+                                    <span>To move this task to the 'Done' column, you must first complete and move all its children tasks to 'Done'.</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block font-bold uppercase tracking-wider mb-2 text-[10px] text-[var(--text-muted)]">Uncompleted children tasks:</label>
+                                <div className="flex flex-col gap-2">
+                                    {dependencyError.uncompleted.map((child: any) => (
+                                        <div key={child.id} className="p-3 bg-[var(--bg-page)] border-2 border-[var(--border-base)] text-xs font-bold text-[var(--text-main)]" style={{ borderRadius: DETAILS_FIELD_RADIUS }}>
+                                            ↳ {child.title}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                    ) : subtaskError?.active ? (
+                        <>
+                            <div className="p-6 justify-center bg-[var(--status-error)]/10 rounded-2xl border-2 border-[var(--status-error)]/30 flex gap-4 text-[var(--status-error)] text-base">
+                                <AlertTriangle className="flex-shrink-0 mt-0.5" size={28} />
+                                <div>
+                                    <span className="font-black block mb-2 text-lg">Move Blocked!</span>
+                                    <span>To move this task to the 'Done' column, you must first complete all its subtasks (checklist).</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block font-bold uppercase tracking-wider mb-2 text-[10px] text-[var(--text-muted)]">Uncompleted subtasks:</label>
+                                <div className="flex flex-col gap-2">
+                                    {subtaskError.uncompleted.map((sub: any) => (
+                                        <div key={sub.id} className="p-3 bg-[var(--bg-page)] border-2 border-[var(--border-base)] text-xs font-bold text-[var(--text-main)]" style={{ borderRadius: DETAILS_FIELD_RADIUS }}>
+                                            ☐ {sub.title}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                    ) : cascadeMoveWarning?.active ? (
+                        <>
+                            <div className="p-6 justify-center bg-[var(--status-warning)]/10 rounded-2xl border-2 border-[var(--status-warning)]/30 flex gap-4 text-[var(--status-warning)] text-base">
+                                <AlertTriangle className="flex-shrink-0 mt-0.5" size={28} />
+                                <div>
+                                    <span className="font-black block mb-2 text-lg">Cascade Move Warning!</span>
+                                    <span>
+                                        {cascadeMoveWarning.relationType === 'children' 
+                                            ? "This task has children in the 'Done' column. Moving it will also move its children to the new column."
+                                            : "This task's parent is in the 'Done' column. Moving it will also move its parent to the new column."}
+                                    </span>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block font-bold uppercase tracking-wider mb-2 text-[10px] text-[var(--text-muted)]">Tasks that will be moved together:</label>
+                                <div className="flex flex-col gap-2">
+                                    {cascadeMoveWarning.relatedItems.map((related: any) => (
+                                        <div key={related.id} className="p-3 bg-[var(--bg-page)] border-2 border-[var(--border-base)] text-xs font-bold text-[var(--text-main)]" style={{ borderRadius: DETAILS_FIELD_RADIUS }}>
+                                            {cascadeMoveWarning.relationType === 'children' ? '↳' : '↱'} {related.title}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                    ) : relationSelect?.active ? (
+                        <>
+                            <div className="p-6 justify-center bg-[var(--accent-primary)]/10 rounded-2xl border-2 border-[var(--accent-primary)]/30 flex gap-4 text-[var(--accent-primary)] text-base">
+                                <Network className="flex-shrink-0 mt-0.5" size={28} />
+                                <div>
+                                    <span className="font-black block mb-2 text-lg">Relation Mode</span>
+                                    <span>Change relations by clicking directly on task cards on the board for the task: <br/><strong className="text-[var(--text-main)]">"{relationSelect.sourceItem?.title}"</strong></span>
+                                </div>
+                            </div>
+                            <p className="text-xs font-semibold text-[var(--text-muted)] leading-relaxed">
+                                {relationSelect.type === 'parent' 
+                                    ? 'Select one parent task on the board. Clicking again will change your selection.' 
+                                    : 'Select any number of tasks as children. Clicking a highlighted task again will deselect it.'}
+                            </p>
+                            <div className="p-3 bg-[var(--bg-page)] border-2 border-[var(--border-base)] text-center text-sm font-black text-[var(--accent-primary)] animate-pulse" style={{ borderRadius: DETAILS_FIELD_RADIUS }}>
+                                Currently selected: {relationSelect.selectedIds.length} tasks
+                            </div>
+                        </>
+                    ) : isDeleting ? (
                         <>
                             <div className="p-4 justify-center bg-[var(--status-error)]/10 rounded-2xl border border-[var(--status-error)]/30 flex gap-3 text-[var(--status-error)] text-sm">
                                 <AlertTriangle className="flex-shrink-0 mt-0.5" size={20} />
                                 <div>
                                     <span className="font-bold block mb-1">Danger Zone!</span>
                                     {panel.type === 'task' ? (
-                                        <span>Are you sure you want to permanently delete this task? This action is irreversible.</span>
+                                        panel.item?.childs?.length > 0 ? (
+                                            <span className="font-black text-[var(--status-error)]">This task cannot be deleted because it has assigned children tasks. Disconnect or delete them first!</span>
+                                        ) : (
+                                            <span>Are you sure you want to permanently delete this task? This action is irreversible.</span>
+                                        )
                                     ) : hasItems ? (
                                         <span>This {panel.type} contains tasks. What do you want to do with them before deleting?</span>
                                     ) : (
@@ -292,6 +405,14 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                 <span>{pendingMove ? "Moving this task will exceed the column's Work-In-Progress limit. Are you sure you want to proceed?" : "Adding a new task will exceed the column's Work-In-Progress limit. Are you sure you want to proceed?"}</span>
                             </div>
                         </div>
+                    ) : isDuplicateNameWarning ? (
+                        <div className="p-6 bg-[var(--status-error)]/10 rounded-2xl border-2 border-[var(--status-error)]/30 flex gap-4 text-[var(--status-error)] text-base mt-2">
+                            <AlertTriangle className="flex-shrink-0 mt-0.5" size={28} />
+                            <div>
+                                <span className="font-black block mb-2 text-lg">Name Already Exists!</span>
+                                <span>A column with the name "{panel.mode === 'add' ? formData.title.trim() || `New ${panel.type}` : (typeof editValue === 'string' ? editValue.trim() : '') || `New ${panel.type}`}" already exists. Please choose a different, unique name.</span>
+                            </div>
+                        </div>
                     ) : (
                         <>
                             <div>
@@ -299,6 +420,7 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                 {panel.mode === 'add' ? (
                                     <textarea 
                                         rows={1}
+                                        maxLength={panel.type === 'task' ? 120 : 64}
                                         className="w-full block m-0 text-base font-bold leading-tight border-2 border-[var(--border-base)] bg-[var(--bg-card)] text-[var(--text-main)] focus:outline-none focus:border-[var(--accent-primary)] transition-all shadow-sm resize-none overflow-hidden"
                                         style={{ borderRadius: DETAILS_FIELD_RADIUS, padding: '15px 14px', minHeight: '56px' }} 
                                         value={formData.title} 
@@ -331,6 +453,7 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                         <textarea 
                                             autoFocus
                                             rows={1}
+                                            maxLength={panel.type === 'task' ? 120 : 64}
                                             className="w-full block m-0 text-base font-bold leading-tight border-2 border-[var(--accent-primary)] bg-[var(--accent-primary-light)] text-[var(--text-main)] focus:outline-none shadow-sm resize-none overflow-hidden"
                                             style={{ borderRadius: DETAILS_FIELD_RADIUS, padding: '15px 14px', minHeight: '56px' }} 
                                             value={editValue} 
@@ -526,10 +649,9 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                 </div>
                             )}
 
-                            {/* --- SEKCJA SUBTASKÓW Z LOKALNYM STANEM --- */}
                             {panel.type === 'task' && panel.mode === 'view' && (
                                 <div className="flex flex-col mt-2">
-                                    <label className={`block font-bold uppercase tracking-wider mb-2 text-[10px] ${isEditingSubtasks ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)]'}`}>
+                                    <label className={`block font-bold uppercase tracking-wider mb-2 text-[10px] ${isEditingSubtasks ? 'text-[var(--accent-primary)]' : 'text-[10px] text-[var(--text-muted)]'}`}>
                                         Subtasks
                                     </label>
                                     
@@ -716,7 +838,7 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                                 )}
                                             </div>
                                             
-                                            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
+                                            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
                                                 <span 
                                                 style={{
                                                 padding: '3px 5px 3px 5px'
@@ -727,7 +849,38 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                     )}
                                 </div>
                             )}
-                            {/* --- KONIEC SEKCJI SUBTASKÓW --- */}
+
+                            {/* CZYSTE PRZYCISKI DO RELACJI - BEZ LISTY */}
+                            {panel.type === 'task' && panel.mode === 'view' && panel.item && (
+                                <div className="flex flex-col">
+                                    <label className="block font-bold uppercase tracking-wider mb-2 text-[10px] text-[var(--text-muted)]">
+                                        Related Tasks
+                                    </label>
+                                    <div className="flex flex-col gap-3">
+                                        <button
+                                            onClick={() => startRelationSelect && startRelationSelect('parent')}
+                                            className="group relative flex items-center gap-3 bg-[var(--bg-card)] border-2 border-[var(--border-base)] hover:border-green-500/50 hover:bg-green-500/5 shadow-sm cursor-pointer transition-colors"
+                                            style={{ borderRadius: DETAILS_FIELD_RADIUS, paddingLeft: '14px', paddingRight: '14px', height: '56px' }}
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-green-500/10 text-green-600 flex items-center justify-center flex-shrink-0">
+                                                <ArrowUpToLine size={16} strokeWidth={2.5} />
+                                            </div>
+                                            <span className="text-sm font-bold text-[var(--text-main)] select-none">Assign Parent on Board</span>
+                                        </button>
+
+                                        <button
+                                            onClick={() => startRelationSelect && startRelationSelect('children')}
+                                            className="group relative flex items-center gap-3 bg-[var(--bg-card)] border-2 border-[var(--border-base)] hover:border-yellow-500/50 hover:bg-yellow-500/5 shadow-sm cursor-pointer transition-colors"
+                                            style={{ borderRadius: DETAILS_FIELD_RADIUS, paddingLeft: '14px', paddingRight: '14px', height: '56px' }}
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-yellow-500/10 text-yellow-600 flex items-center justify-center flex-shrink-0">
+                                                <Network size={16} strokeWidth={2.5} />
+                                            </div>
+                                            <span className="text-sm font-bold text-[var(--text-main)] select-none">Choose Children on Board</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                             {panel.type === 'column' && !isBacklogPanel && (
                                 <div>
@@ -738,8 +891,8 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                             style={{ borderRadius: DETAILS_FIELD_RADIUS, paddingLeft: '14px', paddingRight: '30px', height: '56px' }} 
                                             value={formData.limit || 0} onChange={(e) => setFormData({...formData, limit: parseInt(e.target.value)})}
                                         >
-                                            <option value={0} className="text-gray-800">None (No limit)</option>
-                                            {[...Array(20)].map((_, i) => <option key={i + 1} value={i + 1} className="text-gray-800">{i + 1}</option>)}
+                                            <option value={0} className="text-[var(--text-main)]">None (No limit)</option>
+                                            {[...Array(20)].map((_, i) => <option key={i + 1} value={i + 1} className="text-[var(--text-main)]">{i + 1}</option>)}
                                         </select>
                                     ) : activeField === 'limit' ? (
                                         <div className="relative">
@@ -755,8 +908,8 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                                 style={{ borderRadius: DETAILS_FIELD_RADIUS, paddingLeft: '14px', paddingRight: '30px', height: '56px' }} 
                                                 value={editValue} onChange={(e) => setEditValue(parseInt(e.target.value))} onBlur={cancelEdit} onKeyDown={handleKeyDownDefault}
                                             >
-                                                <option value={0} className="text-gray-800">None (No limit)</option>
-                                                {[...Array(20)].map((_, i) => <option key={i + 1} value={i + 1} className="text-gray-800">{i + 1}</option>)}
+                                                <option value={0} className="text-[var(--text-main)]">None (No limit)</option>
+                                                {[...Array(20)].map((_, i) => <option key={i + 1} value={i + 1} className="text-[var(--text-main)]">{i + 1}</option>)}
                                             </select>
                                             <div className="text-[9px] text-[var(--accent-primary)] mt-1.5 font-bold">Select and click <kbd className="bg-[var(--accent-primary-light)] px-1 py-0.5 rounded border border-[var(--accent-primary)]">Save</kbd> or <kbd className="bg-[var(--accent-primary-light)] px-1 py-0.5 rounded border border-[var(--accent-primary)]">Esc</kbd> to discard</div>
                                         </div>
@@ -858,8 +1011,109 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                     )}
                 </div>
 
+                {panel.type === 'task' && panel.mode === 'view' && totalSubtasks > 0 && !isDeleting && !isClearing && !showWipWarning && !isDuplicateNameWarning && !relationSelect?.active && !dependencyError?.active && !subtaskError?.active && !cascadeMoveWarning?.active && (
+                    <div 
+                        className="flex-shrink-0 bg-[var(--bg-card)] border-t border-[var(--border-base)] flex flex-col justify-center transition-colors"
+                        style={{ paddingLeft: `${SIDEBAR_LEFT_PADDING}px`, paddingRight: `${SIDEBAR_RIGHT_PADDING}px`, paddingBottom: '16px', paddingTop: '16px' }}
+                    >
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2 block">Progress</span>
+                        <div className="flex items-center gap-3 w-full">
+                            <div className="flex-1 bg-[var(--bg-page)] h-2.5 rounded-full overflow-hidden border border-[var(--border-base)] shadow-inner transition-colors">
+                                <div 
+                                    className="h-full bg-[var(--accent-primary)] transition-all duration-700 ease-out"
+                                    style={{ width: `${progressValue}%` }}
+                                />
+                            </div>
+                            <span className="text-sm font-black text-[var(--accent-primary)] w-9 text-right tracking-tight">
+                                {Math.round(progressValue)}%
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 <div style={{ height: `${FOOTER_HEIGHT}px` }} className="flex border-t border-[var(--border-base)] bg-[var(--bg-card)] flex-shrink-0">
-                    {isDeleting ? (
+                    {dependencyError?.active ? (
+                        <div style={{ width: '100%', height: '100%' }}>
+                            <button 
+                                onClick={() => setDependencyError && setDependencyError({ active: false, item: null, uncompleted: [] })}
+                                className="w-full h-full flex items-center justify-center bg-gray-950 text-white text-xs font-black uppercase tracking-widest hover:bg-black transition-colors cursor-pointer rounded-none outline-none select-none"
+                            >
+                                Okay
+                            </button>
+                        </div>
+                    ) : subtaskError?.active ? (
+                        <div style={{ width: '100%', height: '100%' }}>
+                            <button 
+                                onClick={() => setSubtaskError && setSubtaskError({ active: false, item: null, uncompleted: [] })}
+                                className="w-full h-full flex items-center justify-center bg-gray-950 text-white text-xs font-black uppercase tracking-widest hover:bg-black transition-colors cursor-pointer rounded-none outline-none select-none"
+                            >
+                                Okay
+                            </button>
+                        </div>
+                    ) : cascadeMoveWarning?.active ? (
+                        <>
+                            <div style={{ width: `${SIDEBAR_WIDTH * FOOTER_LEFT_RATIO}px`, height: '100%' }}>
+                                <button 
+                                    onClick={() => setCascadeMoveWarning && setCascadeMoveWarning(null)}
+                                    className="w-full h-full flex items-center justify-center bg-[var(--bg-card)] text-[var(--text-main)] text-xs font-bold hover:bg-[var(--bg-page)] transition-colors border-r border-[var(--border-base)] cursor-pointer rounded-none outline-none select-none"
+                                >
+                                    Discard
+                                </button>
+                            </div>
+                            <div style={{ width: `${SIDEBAR_WIDTH * FOOTER_RIGHT_RATIO}px`, height: '100%', display: 'flex' }}>
+                                <button 
+                                    onClick={async () => {
+                                        if (!setCascadeMoveWarning || !cascadeMoveWarning) return;
+                                        
+                                        for (const related of cascadeMoveWarning.relatedItems) {
+                                            await updateItem(related.id, { columnId: cascadeMoveWarning.targetColId, rowId: cascadeMoveWarning.targetRowId });
+                                        }
+                                        moveItem(cascadeMoveWarning.movingItem.id, cascadeMoveWarning.targetColId, cascadeMoveWarning.targetRowId, cascadeMoveWarning.targetIndex);
+                                        
+                                        setCascadeMoveWarning(null);
+                                        setPanel(prev => ({...prev, isOpen: false}));
+                                    }}
+                                    className="w-full h-full flex items-center justify-center bg-[var(--status-warning)] text-white text-xs font-bold hover:opacity-90 transition-colors cursor-pointer rounded-none outline-none select-none"
+                                >
+                                    <Save size={18} className="mr-2"/> Continue
+                                </button>
+                            </div>
+                        </>
+                    ) : relationSelect?.active ? (
+                        <>
+                            <div style={{ width: `${SIDEBAR_WIDTH * FOOTER_LEFT_RATIO}px`, height: '100%' }}>
+                                <button 
+                                    onClick={() => setRelationSelect && setRelationSelect({ active: false, type: 'parent', sourceItem: null, selectedIds: [] })}
+                                    className="w-full h-full flex items-center justify-center bg-[var(--bg-card)] text-[var(--text-main)] text-xs font-bold hover:bg-[var(--bg-page)] transition-colors border-r border-[var(--border-base)] cursor-pointer rounded-none outline-none select-none"
+                                >
+                                    Discard
+                                </button>
+                            </div>
+                            <div style={{ width: `${SIDEBAR_WIDTH * FOOTER_RIGHT_RATIO}px`, height: '100%', display: 'flex' }}>
+                                <button 
+                                    onClick={async () => {
+                                        if (!setRelationSelect || !relationSelect.sourceItem) return;
+                                        if (relationSelect.type === 'parent') {
+                                            const newParentId = relationSelect.selectedIds.length > 0 ? relationSelect.selectedIds[0] : null;
+                                            await updateItem(relationSelect.sourceItem.id, { parentId: newParentId });
+                                        } else {
+                                            const currentChildIds = relationSelect.sourceItem.childs?.map((c:any) => c.id) || [];
+                                            const newChildIds = relationSelect.selectedIds;
+                                            const toAdd = newChildIds.filter((id: number) => !currentChildIds.includes(id));
+                                            const toRemove = currentChildIds.filter((id: number) => !newChildIds.includes(id));
+                                            
+                                            for (const childId of toAdd) await updateItem(childId, { parentId: relationSelect.sourceItem.id });
+                                            for (const childId of toRemove) await updateItem(childId, { parentId: null });
+                                        }
+                                        setRelationSelect({ active: false, type: 'parent', sourceItem: null, selectedIds: [] });
+                                    }}
+                                    className="w-full h-full flex items-center justify-center bg-[var(--accent-primary)] text-white text-xs font-bold hover:opacity-90 transition-colors cursor-pointer rounded-none outline-none select-none"
+                                >
+                                    <Save size={18} className="mr-2"/> Save ({relationSelect.selectedIds.length})
+                                </button>
+                            </div>
+                        </>
+                    ) : isDeleting ? (
                         <>
                             <div style={{ width: `${SIDEBAR_WIDTH * FOOTER_LEFT_RATIO}px`, height: '100%' }}>
                                 <button key="btn-cancel-del" onClick={() => setIsDeleting(false)} className="w-full h-full flex items-center justify-center bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-main)] border-r border-[var(--border-base)] hover:bg-[var(--bg-page)] transition-colors cursor-pointer rounded-none outline-none select-none" title="Cancel">
@@ -867,7 +1121,12 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                 </button>
                             </div>
                             <div style={{ width: `${SIDEBAR_WIDTH * FOOTER_RIGHT_RATIO}px`, height: '100%', display: 'flex' }}>
-                                <button key="btn-confirm-del" onClick={confirmDelete} className="w-full h-full flex items-center justify-center bg-[var(--status-error)] text-white text-xs font-bold hover:opacity-90 transition-colors cursor-pointer rounded-none outline-none select-none">
+                                <button 
+                                    key="btn-confirm-del" 
+                                    onClick={confirmDelete} 
+                                    disabled={panel.type === 'task' && panel.item?.childs?.length > 0}
+                                    className={`w-full h-full flex items-center justify-center text-white text-xs font-bold transition-colors cursor-pointer rounded-none outline-none select-none ${panel.type === 'task' && panel.item?.childs?.length > 0 ? 'bg-gray-400 dark:bg-gray-800 text-gray-200 dark:text-gray-500 cursor-not-allowed opacity-40' : 'bg-[var(--status-error)] hover:opacity-90'}`}
+                                >
                                     <Trash2 size={18} className="mr-2"/> Confirm Delete
                                 </button>
                             </div>
@@ -902,6 +1161,14 @@ const EditSidebar: React.FC<EditSidebarProps> = ({
                                     }
                                 }} className="w-full h-full flex items-center justify-center bg-[var(--status-warning)] text-white text-xs font-bold hover:opacity-90 transition-colors cursor-pointer rounded-none outline-none select-none">
                                     <Save size={18} className="mr-2"/> Proceed
+                                </button>
+                            </div>
+                        </>
+                    ) : isDuplicateNameWarning ? (
+                        <>
+                            <div style={{ width: `100%`, height: '100%' }}>
+                                <button key="btn-ok-duplicate" onClick={() => setIsDuplicateNameWarning(false)} className="w-full h-full flex items-center justify-center bg-[var(--bg-card)] text-[var(--text-main)] text-xs font-bold hover:bg-[var(--bg-page)] transition-colors cursor-pointer rounded-none outline-none select-none">
+                                    <X size={18} className="mr-2"/> Go Back to Edit
                                 </button>
                             </div>
                         </>

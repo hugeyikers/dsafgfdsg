@@ -1,11 +1,11 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsInt, IsOptional, IsString, IsBoolean, IsDateString } from 'class-validator';
 
 export class CreateRowDto {
   @IsString()
   @IsNotEmpty()
   title: string;
 
-  @IsNumber()
+  @IsInt()
   @IsOptional()
   limit?: number;
 

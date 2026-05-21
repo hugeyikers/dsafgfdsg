@@ -16,11 +16,15 @@ export interface KanbanItem {
   order: number;
   columnId: number;
   rowId: number | null;
+  parentId: number | null;
+  childs?: KanbanItem[];
   assignedUsers?: { id: number, fullName: string, email: string }[];
   subtasks?: KanbanItemSubTask[];
   color?: string;
   createdAt?: string;
   updatedAt?: string;
+  deadline?: string;
+  size?: 'S' | 'M' | 'L' | 'XL';
 }
 
 export interface KanbanColumn {
@@ -57,7 +61,7 @@ interface KanbanState {
   removeRow: (id: number, action?: 'delete_tasks' | 'move_tasks', targetRowId?: number | null) => Promise<void>;
   reorderRows: (startIndex: number, endIndex: number) => Promise<void>;
 
-  addItem: (data: { columnId: number, rowId: number | null, title: string, content: string, color?: string, assignedUsersIds?: number[] }) => Promise<void>;
+  addItem: (data: { columnId: number, rowId: number | null, parentId?: number | null, title: string, content: string, color?: string, assignedUsersIds?: number[], deadline?: string, size?: string }) => Promise<void>;
   updateItem: (itemId: number, data: Partial<KanbanItem> & { assignedUsersIds?: number[] }) => Promise<void>;
   removeItem: (itemId: number) => Promise<void>;
   moveItem: (itemId: number, targetColumnId: number, targetRowId: number | null, targetIndex?: number) => Promise<void>; 
