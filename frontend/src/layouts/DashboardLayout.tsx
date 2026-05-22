@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { useThemeStore } from '../store/useThemeStore';
-import { LogOut, Menu, X, LayoutDashboard, Settings, Moon, Sun, Eye, EyeOff, BookOpen, Info } from 'lucide-react';
+import { LogOut, Menu, X, LayoutDashboard, Settings, Moon, Sun, Eye, EyeOff, BookOpen, Info, Clock } from 'lucide-react';
 
 interface User {
   fullName: string;
@@ -31,11 +31,13 @@ const DashboardLayout = ({ user }: { user: User }) => {
   const isKanban = location.pathname.startsWith('/kanban');
   const isUsers = location.pathname.startsWith('/users');
   const isManual = location.pathname.startsWith('/manual');
+  const isTimeline = location.pathname.startsWith('/timeline');
   const isAbout = location.pathname.startsWith('/about');
 
   let pageTitle = 'Kanban Board';
   if (isUsers) pageTitle = 'Settings';
   else if (isManual) pageTitle = 'User Guide';
+  else if (isTimeline) pageTitle = 'Timeline';
   else if (isAbout) pageTitle = 'About the Project';
 
   return (
@@ -74,6 +76,14 @@ const DashboardLayout = ({ user }: { user: User }) => {
                className={`w-full flex items-center gap-3 font-bold rounded-lg transition-colors ${isManual ? 'bg-[var(--accent-primary-light)] text-[var(--accent-primary)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg-page)] hover:text-[var(--text-main)]'}`}
             >
                <BookOpen size={26} /> Manual
+            </button>
+
+            <button 
+               style={{ padding: '12px 20px' }}
+               onClick={() => { navigate('/timeline'); setIsSidebarOpen(false); }}
+               className={`w-full flex items-center gap-3 font-bold rounded-lg transition-colors ${isTimeline ? 'bg-[var(--accent-primary-light)] text-[var(--accent-primary)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg-page)] hover:text-[var(--text-main)]'}`}
+            >
+               <Clock size={26} /> Timeline
             </button>
 
             <button 

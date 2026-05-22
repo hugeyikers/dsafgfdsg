@@ -4,6 +4,7 @@ import KanbanBoard from './features/kanban/KanbanBoard';
 import UserManagement from './pages/UserManagement';
 import Login from './pages/Login';
 import Manual from './pages/Manual';
+import Timeline from './pages/Timeline';
 import About from './pages/About';
 
 import { useAuthStore } from './store/useAuthStore';
@@ -19,6 +20,7 @@ function App() {
         <Route element={isLogged ? <DashboardLayout user={user!} /> : <Navigate to="/login" />}>
           <Route path="/kanban" element={<KanbanBoard />} />
           <Route path="/manual" element={<Manual />} />
+          <Route path="/timeline" element={<Timeline />} />
           <Route path="/about" element={<About />} />
           
           {user?.role === 'ADMINISTRATOR' && (
