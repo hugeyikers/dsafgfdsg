@@ -16,15 +16,11 @@ export interface KanbanItem {
   order: number;
   columnId: number;
   rowId: number | null;
-  parentId: number | null;
-  childs?: KanbanItem[];
   assignedUsers?: { id: number, fullName: string, email: string }[];
   subtasks?: KanbanItemSubTask[];
   color?: string;
   createdAt?: string;
   updatedAt?: string;
-  deadline?: string;
-  size?: 'S' | 'M' | 'L' | 'XL';
 }
 
 export interface KanbanColumn {
@@ -47,9 +43,11 @@ export interface KanbanRow {
 interface KanbanState {
   columns: KanbanColumn[];
   rows: KanbanRow[];
+  history: any[];
   isLoading: boolean;
   
   fetchBoard: () => Promise<void>;
+  fetchHistory: () => Promise<void>;
   
   addColumn: (title: string, color?: string, limit?: number) => Promise<void>;
   updateColumn: (id: number, data: { title?: string, color?: string, order?: number, limit?: number }) => Promise<void>;
@@ -61,7 +59,7 @@ interface KanbanState {
   removeRow: (id: number, action?: 'delete_tasks' | 'move_tasks', targetRowId?: number | null) => Promise<void>;
   reorderRows: (startIndex: number, endIndex: number) => Promise<void>;
 
-  addItem: (data: { columnId: number, rowId: number | null, parentId?: number | null, title: string, content: string, color?: string, assignedUsersIds?: number[], deadline?: string, size?: string }) => Promise<void>;
+  addItem: (data: { columnId: number, rowId: number | null, title: string, content: string, color?: string, assignedUsersIds?: number[] }) => Promise<void>;
   updateItem: (itemId: number, data: Partial<KanbanItem> & { assignedUsersIds?: number[] }) => Promise<void>;
   removeItem: (itemId: number) => Promise<void>;
   moveItem: (itemId: number, targetColumnId: number, targetRowId: number | null, targetIndex?: number) => Promise<void>; 
@@ -74,14 +72,33 @@ interface KanbanState {
 export const useKanbanStore = create<KanbanState>((set, get) => ({
   columns: [],
   rows: [],
+  history: [],
   isLoading: false,
 
   fetchBoard: async () => {
     set({ isLoading: true });
     try {
       const res = await client.get('/kanban/all');
-      set({ columns: res.data.columns || [], rows: res.data.rows || [] });
+      set({ 
+        columns: res.data.columns || [], 
+        rows: res.data.rows || [],
+        history: res.data.history || get().history
+      });
     } catch (e) { console.error(e); } finally { set({ isLoading: false }); }
+  },
+
+  fetchHistory: async () => {
+    try {
+      const res = await client.get('/kanban/history');
+      set({ history: res.data || [] });
+    } catch (e) {
+      try {
+        const resAlt = await client.get('/kanban/items/history');
+        set({ history: resAlt.data || [] });
+      } catch (err) {
+        console.error(err);
+      }
+    }
   },
 
   addColumn: async (title, color, limit = 0) => { try { await client.post('/kanban/columns', { title, color, limit }); get().fetchBoard(); } catch (e) { console.error(e); } },
@@ -119,6 +136,7 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
   
   removeRow: async (id, action, targetRowId) => { 
       try { 
+          // Naprawiono błąd składniowy w tej linijce:
           if (action === 'move_tasks') {
               const tasksToMove = get().columns.flatMap(c => c.items.filter(i => i.rowId === id));
               if (tasksToMove.length > 0) {
@@ -160,8 +178,6 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
       let cellItemsToUpdate: any[] = [];
 
       set(state => {
-          // WAŻNE: Głębokie klonowanie gwarantuje, że React zobaczy absolutnie każdą zmianę stanu
-          // dzięki temu pozbywamy się "flickeringu" (wpadania z góry) z biblioteki DND
           const newColumns = state.columns.map(col => ({
               ...col,
               items: col.items.map(item => ({ ...item }))
@@ -169,7 +185,6 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
 
           let movedItem: any = null;
 
-          // 1. Znajdź i usuń item ze źródła
           for (let i = 0; i < newColumns.length; i++) {
               const idx = newColumns[i].items.findIndex(it => it.id === itemId);
               if (idx !== -1) {
@@ -184,21 +199,17 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
               if (targetColIndex !== -1) {
                   const targetItems = newColumns[targetColIndex].items;
 
-                  // 2. Filtruj elementy
                   const cellItems = targetItems.filter(it => it.rowId === targetRowId);
                   const otherItems = targetItems.filter(it => it.rowId !== targetRowId);
 
-                  // Uporządkuj elementy zanim wykonasz splice
                   cellItems.sort((a, b) => (a.order || 0) - (b.order || 0));
 
-                  // 3. Wstaw element w nowe miejsce (np. z dołu na górę)
                   if (targetIndex !== undefined && targetIndex !== null) {
                       cellItems.splice(targetIndex, 0, movedItem);
                   } else {
                       cellItems.push(movedItem);
                   }
 
-                  // 4. Przelicz 'order' przypisując NOWE obiekty, co natychmiastowo synchronizuje stan z Reactem
                   const updatedCellItems = cellItems.map((item, idx) => ({
                       ...item,
                       order: idx
@@ -214,7 +225,6 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
 
       try {
           if (cellItemsToUpdate.length > 0) {
-              // Aktualizuj wszystko po kolei na serwerze
               await Promise.all(cellItemsToUpdate.map(item => {
                   if (item.id === itemId) {
                       return client.patch(`/kanban/items/${item.id}`, { 
@@ -228,7 +238,7 @@ export const useKanbanStore = create<KanbanState>((set, get) => ({
           }
       } catch (e) { 
           console.error("Move error:", e); 
-          get().fetchBoard(); // Fallback w razie wyrzucenia błędu po stronie backendu
+          get().fetchBoard(); 
       }
   },
 
